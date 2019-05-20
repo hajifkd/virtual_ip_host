@@ -10,9 +10,7 @@ fn main() {
         let s = open_socket();
         println!("fd: {}", s);
         if s == -1 {
-            let errno = *__errno_location();
-            let error_str = CStr::from_ptr(strerror(errno));
-            println!("{}", error_str.to_str().unwrap());
+            utils::show_error_text();
         }
     }
     println!("Hello, world!");
