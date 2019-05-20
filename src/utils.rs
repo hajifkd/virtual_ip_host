@@ -1,4 +1,4 @@
-use libc::{__errno_location, c_int, strerror};
+use libc::{__errno_location, strerror};
 use std::ffi::CStr;
 
 // little <-> big for 16bit
