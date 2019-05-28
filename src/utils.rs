@@ -1,5 +1,6 @@
 use libc::{__errno_location, strerror};
 use std::ffi::CStr;
+use std::fmt;
 
 // little <-> big for 16bit
 pub fn swap_endian_16(t: u16) -> u16 {
@@ -15,6 +16,16 @@ pub unsafe fn show_error_text() {
     let errno = *__errno_location();
     let error_str = CStr::from_ptr(strerror(errno));
     println!("{}", error_str.to_str().unwrap());
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct Byte(u8);
+
+impl fmt::Debug for Byte {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "0x{:02X}", self.0)
+    }
 }
 
 #[cfg(test)]

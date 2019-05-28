@@ -1,3 +1,4 @@
+use crate::utils::Byte;
 use std::fmt;
 
 #[repr(C)]
@@ -5,7 +6,7 @@ use std::fmt;
 pub struct MACHeader {
     pub dst_mac: MACAddress,
     pub src_mac: MACAddress,
-    pub ether_type: [u8; 2],
+    pub ether_type: [Byte; 2],
 }
 
 #[repr(C)]
