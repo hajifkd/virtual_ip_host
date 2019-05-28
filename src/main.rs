@@ -1,6 +1,6 @@
 extern crate libc;
 
-use libc::{c_int, recv, socket, ETH_P_ALL, PF_PACKET, SOCK_RAW};
+use libc::recv;
 
 mod headers;
 mod socket;
