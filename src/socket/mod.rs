@@ -1,4 +1,7 @@
-use libc::{bind, c_int, ioctl, sockaddr_ll, socket, AF_PACKET, ETH_P_ALL, PF_PACKET, SOCK_RAW};
+use libc::{
+    bind, c_int, ioctl, packet_mreq, setsockopt, sockaddr_ll, socket, AF_PACKET, ETH_P_ALL,
+    PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
+};
 
 use crate::utils;
 
@@ -10,6 +13,7 @@ const SIOCGIFINDEX: usize = 0x8933;
 #[derive(Debug)]
 pub struct Socket {
     pub fd: c_int,
+    pub ifindex: i32,
 }
 
 impl Socket {
@@ -20,11 +24,12 @@ impl Socket {
                 SOCK_RAW,
                 utils::swap_endian_16(ETH_P_ALL as _) as _,
             ),
+            ifindex: -1,
         }
     }
 
     // Should be Result
-    pub unsafe fn limit_interface(&self, iface_name: &str) -> Option<()> {
+    pub unsafe fn limit_interface(&mut self, iface_name: &str) -> Option<()> {
         let mut if_req: ifreq::ifreq = std::mem::uninitialized();
         let chars = iface_name.as_bytes();
 
@@ -49,6 +54,7 @@ impl Socket {
         sa.sll_family = AF_PACKET as _;
         sa.sll_protocol = utils::swap_endian_16(ETH_P_ALL as _) as _;
         sa.sll_ifindex = if_req.result.ifr_ifindex;
+        self.ifindex = if_req.result.ifr_ifindex;
 
         let bind_result = bind(
             self.fd,
@@ -60,6 +66,29 @@ impl Socket {
             None
         } else {
             Some(())
+        }
+    }
+
+    pub unsafe fn enable_promisc_mode(&self) -> Option<()> {
+        let mut opt: packet_mreq = std::mem::uninitialized();
+
+        if self.ifindex >= 0 {
+            opt.mr_ifindex = self.ifindex;
+        }
+
+        opt.mr_type = PACKET_MR_PROMISC as _; // the other fields are not used
+
+        if setsockopt(
+            self.fd,
+            SOL_PACKET,            // socket level API
+            PACKET_ADD_MEMBERSHIP, // control physical layer
+            &opt as *const _ as _,
+            std::mem::size_of::<packet_mreq>() as _,
+        ) >= 0
+        {
+            Some(())
+        } else {
+            None
         }
     }
 }
