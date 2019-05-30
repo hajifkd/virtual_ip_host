@@ -1,4 +1,5 @@
 extern crate libc;
+extern crate map_struct;
 
 mod headers;
 mod socket;

@@ -1,4 +1,5 @@
 use crate::utils::Byte;
+use map_struct::Mappable;
 use std::fmt;
 
 #[repr(C)]
@@ -8,6 +9,8 @@ pub struct MACHeader {
     pub src_mac: MACAddress,
     pub ether_type: [Byte; 2],
 }
+
+unsafe impl Mappable for MACHeader {}
 
 #[repr(C)]
 #[derive(PartialEq, Eq)]
@@ -26,3 +29,6 @@ impl fmt::Debug for MACAddress {
         Ok(())
     }
 }
+
+pub const ETHERTYPE_IP: u16 = 0x0800;
+pub const ETHERTYPE_ARP: u16 = 0x0806;

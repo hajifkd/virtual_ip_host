@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 libc = "0.2"
+map_struct = "0.1.0"

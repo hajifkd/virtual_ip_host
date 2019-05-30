@@ -6,11 +6,18 @@ version = "0.2.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "map_struct"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "virtual_ip_host"
 version = "0.1.0"
 dependencies = [
  "libc 0.2.55 (registry+https://github.com/rust-lang/crates.io-index)",
+ "map_struct 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [metadata]
 "checksum libc 0.2.55 (registry+https://github.com/rust-lang/crates.io-index)" = "42914d39aad277d9e176efbdad68acb1d5443ab65afe0e0e4f0d49352a950880"
+"checksum map_struct 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d31a506745bac6f542ca0e1d61adf866a4b09de79939da49b45e18dd5c8df9e7"

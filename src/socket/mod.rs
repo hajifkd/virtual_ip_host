@@ -5,7 +5,7 @@ use libc::{
 
 use crate::headers::MACHeader;
 use crate::utils;
-use std::mem;
+use map_struct::Mappable;
 
 mod ifreq;
 
@@ -104,10 +104,7 @@ impl Socket {
             let length = 2048;
             let mut buf = vec![0u8; length];
             let l_recv = recv(self.fd, buf.as_mut_ptr() as _, length, 0) as usize;
-            let mac_header: *const MACHeader = buf.as_ptr() as _;
-            // checksum is checked by the hardware
-            let data = &buf[mem::size_of::<MACHeader>()..l_recv];
-            analyzer.analyze(&*mac_header, data);
+            MACHeader::mapped(&buf[..l_recv]).map(|(h, d)| analyzer.analyze(h, d));
         }
     }
 }
