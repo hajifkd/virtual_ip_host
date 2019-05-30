@@ -1,7 +1,5 @@
 extern crate libc;
 
-use libc::recv;
-
 mod headers;
 mod socket;
 mod utils;
@@ -23,11 +21,15 @@ fn main() {
         s.enable_promisc_mode()
             .unwrap_or_else(|| utils::show_error_text());
 
-        let length = 128;
-        let mut buf = vec![0u8; length];
-        let r = recv(s.fd, buf.as_mut_ptr() as _, length, 0);
-        let mac_header: *const headers::MACHeader = buf.as_ptr() as _;
-        dbg!(r);
-        println!("{:?}", &*mac_header);
+        s.recv(&MyAnalyzer);
+    }
+}
+
+struct MyAnalyzer;
+
+impl socket::EtherAnalyze for MyAnalyzer {
+    fn analyze(&self, mac_header: &headers::MACHeader, data: &[u8]) {
+        println!("packet received");
+        println!("MAC header: {:?}", mac_header);
     }
 }

@@ -1,14 +1,20 @@
 use libc::{
-    bind, c_int, ioctl, packet_mreq, setsockopt, sockaddr_ll, socket, AF_PACKET, ETH_P_ALL,
+    bind, c_int, ioctl, packet_mreq, recv, setsockopt, sockaddr_ll, socket, AF_PACKET, ETH_P_ALL,
     PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
 };
 
+use crate::headers::MACHeader;
 use crate::utils;
+use std::mem;
 
 mod ifreq;
 
 /// ./x86_64-linux-gnu/bits/ioctls.h:#define SIOCGIFINDEX	0x8933		/* name -> if_index mapping	*/
 const SIOCGIFINDEX: usize = 0x8933;
+
+pub trait EtherAnalyze {
+    fn analyze(&self, mac_header: &MACHeader, data: &[u8]);
+}
 
 #[derive(Debug)]
 pub struct Socket {
@@ -89,6 +95,19 @@ impl Socket {
             Some(())
         } else {
             None
+        }
+    }
+
+    pub unsafe fn recv<T: EtherAnalyze>(&self, analyzer: &T) {
+        loop {
+            // todo use aio?
+            let length = 2048;
+            let mut buf = vec![0u8; length];
+            let l_recv = recv(self.fd, buf.as_mut_ptr() as _, length, 0) as usize;
+            let mac_header: *const MACHeader = buf.as_ptr() as _;
+            // checksum is checked by the hardware
+            let data = &buf[mem::size_of::<MACHeader>()..];
+            analyzer.analyze(&*mac_header, data);
         }
     }
 }
