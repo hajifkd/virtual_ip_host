@@ -53,7 +53,7 @@ impl Socket {
             return None;
         }
 
-        println!("aaaa",);
+        dbg!("aaaa");
 
         let mut sa: sockaddr_ll = std::mem::uninitialized();
 
@@ -106,7 +106,7 @@ impl Socket {
             let l_recv = recv(self.fd, buf.as_mut_ptr() as _, length, 0) as usize;
             let mac_header: *const MACHeader = buf.as_ptr() as _;
             // checksum is checked by the hardware
-            let data = &buf[mem::size_of::<MACHeader>()..];
+            let data = &buf[mem::size_of::<MACHeader>()..l_recv];
             analyzer.analyze(&*mac_header, data);
         }
     }
