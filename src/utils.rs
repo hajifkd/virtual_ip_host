@@ -8,6 +8,7 @@ pub fn swap_endian_16(t: u16) -> u16 {
 }
 
 // little <-> big for 16bit
+#[allow(dead_code)]
 pub fn swap_endian_32(t: u32) -> u32 {
     t << 24 | (t << 8 & 0x00_FF_00_00) | (t >> 8 & 0x00_00_FF_00) | t >> 24
 }

@@ -4,6 +4,7 @@ use libc::{
 };
 
 use crate::ether::headers::MACHeader;
+use crate::ether::EthernetAnalyzer;
 use crate::utils;
 use map_struct::Mappable;
 
@@ -11,10 +12,6 @@ mod ifreq;
 
 /// ./x86_64-linux-gnu/bits/ioctls.h:#define SIOCGIFINDEX	0x8933		/* name -> if_index mapping	*/
 const SIOCGIFINDEX: usize = 0x8933;
-
-pub trait EtherAnalyze {
-    fn analyze(&self, mac_header: &MACHeader, data: &[u8]);
-}
 
 #[derive(Debug)]
 pub struct Socket {
@@ -98,7 +95,7 @@ impl Socket {
         }
     }
 
-    pub unsafe fn recv<T: EtherAnalyze>(&self, analyzer: &T) {
+    pub unsafe fn recv(&self, analyzer: &EthernetAnalyzer) {
         loop {
             // todo use aio?
             let length = 2048;
