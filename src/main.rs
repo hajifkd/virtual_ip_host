@@ -1,10 +1,11 @@
 extern crate libc;
 extern crate map_struct;
 
-mod headers;
+mod ether;
 mod socket;
 mod utils;
 
+use ether::headers::MACHeader;
 use socket::Socket;
 
 fn main() {
@@ -29,7 +30,7 @@ fn main() {
 struct MyAnalyzer;
 
 impl socket::EtherAnalyze for MyAnalyzer {
-    fn analyze(&self, mac_header: &headers::MACHeader, data: &[u8]) {
+    fn analyze(&self, mac_header: &MACHeader, data: &[u8]) {
         println!("packet received");
         println!("MAC header: {:?}", mac_header);
     }

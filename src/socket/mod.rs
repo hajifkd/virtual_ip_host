@@ -3,7 +3,7 @@ use libc::{
     PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
 };
 
-use crate::headers::MACHeader;
+use crate::ether::headers::MACHeader;
 use crate::utils;
 use map_struct::Mappable;
 
