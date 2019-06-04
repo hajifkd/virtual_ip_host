@@ -1,3 +1,4 @@
+use crate::arp::headers::ARPHeader;
 use crate::ip::headers::IPHeaderWithoutOptions;
 use map_struct::Mappable;
 
@@ -8,11 +9,16 @@ pub struct EthernetAnalyzer {}
 impl EthernetAnalyzer {
     fn analyze_arp(&self, data: &[u8]) {
         println!("Received ARP packet",);
+        if let Some((header, payload)) = ARPHeader::mapped(&data) {
+            println!("    {:?}", &header);
+        } else {
+            println!("    Invalid ARP packet",);
+        }
     }
 
     fn analyze_ipv4(&self, data: &[u8]) {
         println!("Received IPv4 packet",);
-        if let Some((header, _rest_data)) = IPHeaderWithoutOptions::mapped(&data) {
+        if let Some((header, payload)) = IPHeaderWithoutOptions::mapped(&data) {
             print!("    Checking checksum:",);
             if header.is_valid(&data) {
                 println!(" ok",);

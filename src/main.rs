@@ -1,6 +1,7 @@
 extern crate libc;
 extern crate map_struct;
 
+mod arp;
 mod ether;
 mod ip;
 mod socket;
