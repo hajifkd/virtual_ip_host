@@ -4,16 +4,16 @@ use map_struct::Mappable;
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
 pub struct IPHeaderWithoutOptions {
-    version_ihl: u8,
-    type_of_service: u8,
-    total_length: u16,
-    identification: u16,
-    flags_fragment_offset: u16,
-    ttl: u8,
-    protocol: u8,
-    checksum: u16,
-    src_addr: u32,
-    dst_addr: u32,
+    pub version_ihl: u8,
+    pub type_of_service: u8,
+    pub total_length: u16,
+    pub identification: u16,
+    pub flags_fragment_offset: u16,
+    pub ttl: u8,
+    pub protocol: u8,
+    pub checksum: u16,
+    pub src_addr: u32,
+    pub dst_addr: u32,
 }
 
 unsafe impl Mappable for IPHeaderWithoutOptions {}

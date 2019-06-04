@@ -1,7 +1,7 @@
 use map_struct::Mappable;
 use std::fmt;
 
-#[repr(C)]
+#[repr(C, packed)]
 #[derive(Debug, PartialEq, Eq)]
 pub struct MACHeader {
     pub dst_mac: MACAddress,
@@ -11,7 +11,7 @@ pub struct MACHeader {
 
 unsafe impl Mappable for MACHeader {}
 
-#[repr(C)]
+#[repr(C, packed)]
 #[derive(PartialEq, Eq)]
 pub struct MACAddress {
     pub address: [u8; 6],
