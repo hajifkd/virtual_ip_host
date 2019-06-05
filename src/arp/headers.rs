@@ -11,3 +11,8 @@ pub struct ARPHeader {
 }
 
 unsafe impl Mappable for ARPHeader {}
+
+pub const ARPHRD_ETHER: u16 = 1;
+pub const ETHERTYPE_IP: u16 = 0x0800;
+pub const ARPOP_REQUEST: u16 = 1;
+pub const ARPOP_REPLY: u16 = 2;

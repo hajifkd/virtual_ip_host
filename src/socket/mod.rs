@@ -22,11 +22,7 @@ pub struct Socket {
 impl Socket {
     pub unsafe fn open_raw_socket() -> Socket {
         Socket {
-            fd: socket(
-                PF_PACKET,
-                SOCK_RAW,
-                utils::swap_endian_16(ETH_P_ALL as _) as _,
-            ),
+            fd: socket(PF_PACKET, SOCK_RAW, u16::from_be(ETH_P_ALL as _) as _),
             ifindex: -1,
         }
     }
@@ -55,7 +51,7 @@ impl Socket {
         let mut sa: sockaddr_ll = std::mem::uninitialized();
 
         sa.sll_family = AF_PACKET as _;
-        sa.sll_protocol = utils::swap_endian_16(ETH_P_ALL as _) as _;
+        sa.sll_protocol = u16::from_be(ETH_P_ALL as _) as _;
         sa.sll_ifindex = if_req.result.ifr_ifindex;
         self.ifindex = if_req.result.ifr_ifindex;
 
