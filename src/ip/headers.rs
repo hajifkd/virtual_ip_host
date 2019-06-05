@@ -1,3 +1,4 @@
+use super::IPAddress;
 use crate::utils::checksum;
 use map_struct::Mappable;
 
@@ -12,8 +13,8 @@ pub struct IPHeaderWithoutOptions {
     pub ttl: u8,
     pub protocol: u8,
     pub checksum: u16,
-    pub src_addr: u32,
-    pub dst_addr: u32,
+    pub src_addr: IPAddress,
+    pub dst_addr: IPAddress,
 }
 
 unsafe impl Mappable for IPHeaderWithoutOptions {}
@@ -21,7 +22,6 @@ unsafe impl Mappable for IPHeaderWithoutOptions {}
 impl IPHeaderWithoutOptions {
     pub fn is_valid(&self, orig_data: &[u8]) -> bool {
         let ihl = self.version_ihl & 0x0F;
-        dbg!(std::mem::size_of::<IPHeaderWithoutOptions>());
         checksum(&orig_data[..(ihl << 2) as usize]) == 0
     }
 }

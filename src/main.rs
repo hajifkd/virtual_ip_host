@@ -25,7 +25,7 @@ fn main() {
         s.enable_promisc_mode()
             .unwrap_or_else(|| utils::show_error_text());
 
-        s.recv(&EthernetDriver::new(
+        s.recv(&mut EthernetDriver::new(
             MACAddress::new([0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
             true,
         ));

@@ -5,7 +5,6 @@ use libc::{
 
 use crate::ether::headers::MACHeader;
 use crate::ether::EthernetDriver;
-use crate::utils;
 use map_struct::Mappable;
 
 mod ifreq;
@@ -91,7 +90,7 @@ impl Socket {
         }
     }
 
-    pub unsafe fn recv(&self, analyzer: &EthernetDriver) {
+    pub unsafe fn recv(&self, analyzer: &mut EthernetDriver) {
         loop {
             // todo use aio?
             let length = 2048;
