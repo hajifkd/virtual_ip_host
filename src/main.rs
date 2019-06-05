@@ -7,7 +7,7 @@ mod ip;
 mod socket;
 mod utils;
 
-use ether::EthernetAnalyzer;
+use ether::{EthernetDriver, MACAddress};
 use socket::Socket;
 
 fn main() {
@@ -25,6 +25,9 @@ fn main() {
         s.enable_promisc_mode()
             .unwrap_or_else(|| utils::show_error_text());
 
-        s.recv(&EthernetAnalyzer {});
+        s.recv(&EthernetDriver::new(
+            MACAddress::new([0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
+            true,
+        ));
     }
 }

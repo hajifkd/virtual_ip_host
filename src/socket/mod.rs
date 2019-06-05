@@ -4,7 +4,7 @@ use libc::{
 };
 
 use crate::ether::headers::MACHeader;
-use crate::ether::EthernetAnalyzer;
+use crate::ether::EthernetDriver;
 use crate::utils;
 use map_struct::Mappable;
 
@@ -95,7 +95,7 @@ impl Socket {
         }
     }
 
-    pub unsafe fn recv(&self, analyzer: &EthernetAnalyzer) {
+    pub unsafe fn recv(&self, analyzer: &EthernetDriver) {
         loop {
             // todo use aio?
             let length = 2048;
