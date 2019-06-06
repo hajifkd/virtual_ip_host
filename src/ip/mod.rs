@@ -8,7 +8,7 @@ pub mod header;
 pub struct IPAddress(u32);
 
 impl IPAddress {
-    pub fn from_network_endian(&self) -> Self {
+    pub fn from_network_endian(self) -> Self {
         IPAddress(u32::from_be(self.0))
     }
 }

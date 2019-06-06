@@ -1,5 +1,7 @@
 extern crate libc;
 extern crate map_struct;
+#[macro_use]
+extern crate failure;
 
 mod arp;
 mod ether;

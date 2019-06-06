@@ -3,8 +3,8 @@ use libc::{
     PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
 };
 
-use crate::ether::header::MACHeader;
 use crate::ether::driver::EthernetDriver;
+use crate::ether::header::MACHeader;
 use map_struct::Mappable;
 
 mod ifreq;
