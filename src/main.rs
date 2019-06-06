@@ -7,13 +7,13 @@ mod ip;
 mod socket;
 mod utils;
 
-use ether::{EthernetDriver, MACAddress};
+use ether::driver::EthernetDriver;
+use ether::MACAddress;
 use socket::Socket;
 
 fn main() {
     unsafe {
         let mut s = Socket::open_raw_socket();
-        println!("fd: {:?}", s);
         if s.fd == -1 {
             utils::show_error_text();
             return;

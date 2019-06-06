@@ -2,7 +2,7 @@ use super::ether::MACAddress;
 use super::ip::IPAddress;
 use map_struct::Mappable;
 
-pub mod headers;
+pub mod header;
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
