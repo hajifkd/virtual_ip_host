@@ -2,6 +2,7 @@ use map_struct::Mappable;
 use std::fmt;
 
 pub mod header;
+pub mod icmp;
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]

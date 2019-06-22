@@ -1,6 +1,6 @@
 use libc::{
-    bind, c_int, ioctl, packet_mreq, recv, setsockopt, sockaddr_ll, socket, AF_PACKET, ETH_P_ALL,
-    PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
+    bind, c_int, ioctl, packet_mreq, recv, setsockopt, sockaddr_ll, socket, write, AF_PACKET,
+    ETH_P_ALL, PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
 };
 
 use crate::ether::driver::EthernetDriver;
@@ -44,8 +44,6 @@ impl Socket {
         if io_result < 0 {
             return None;
         }
-
-        dbg!("aaaa");
 
         let mut sa: sockaddr_ll = std::mem::uninitialized();
 
@@ -98,5 +96,9 @@ impl Socket {
             let l_recv = recv(self.fd, buf.as_mut_ptr() as _, length, 0) as usize;
             MACHeader::mapped(&buf[..l_recv]).map(|(h, d)| analyzer.analyze(h, d));
         }
+    }
+
+    pub unsafe fn send(&self, buf: &[u8]) -> isize {
+        write(self.fd, buf.as_ptr() as _, buf.len())
     }
 }

@@ -10,3 +10,9 @@ pub struct EchoPacketWithoutData {
 }
 
 unsafe impl Mappable for EchoPacketWithoutData {}
+
+pub const ICMP_PROTOCOL_NUMBER: u8 = 1;
+
+pub const ECHO_REPLY_TYPE: u8 = 0;
+pub const ECHO_TYPE: u8 = 8;
+pub const ECHO_CODE: u8 = 0;

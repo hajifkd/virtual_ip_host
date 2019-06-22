@@ -24,4 +24,12 @@ impl IPHeaderWithoutOptions {
         let ihl = self.version_ihl & 0x0F;
         checksum(&orig_data[..(ihl << 2) as usize]) == 0
     }
+
+    pub fn version(&self) -> u8 {
+        self.version_ihl >> 2
+    }
+
+    pub fn ihl(&self) -> u8 {
+        self.version_ihl & 0x0F
+    }
 }
