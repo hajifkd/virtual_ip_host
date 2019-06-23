@@ -1,17 +1,7 @@
-extern crate libc;
-extern crate map_struct;
-#[macro_use]
-extern crate failure;
-
-mod arp;
-mod ether;
-mod ip;
-mod socket;
-mod utils;
-
-use ether::driver::EthernetDriver;
-use ether::MACAddress;
-use socket::Socket;
+use virtual_ip_host::ether::driver::EthernetDriver;
+use virtual_ip_host::ether::MACAddress;
+use virtual_ip_host::socket::Socket;
+use virtual_ip_host::utils;
 
 fn main() {
     unsafe {
