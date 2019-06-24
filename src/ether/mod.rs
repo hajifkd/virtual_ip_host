@@ -5,7 +5,7 @@ pub mod driver;
 pub mod header;
 
 #[repr(C, packed)]
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Copy, Clone, Hash)]
 pub struct MACAddress {
     pub address: [u8; 6],
 }
