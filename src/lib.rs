@@ -8,3 +8,10 @@ pub mod ether;
 pub mod ip;
 pub mod socket;
 pub mod utils;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Destination {
+    ToMyself,
+    Broadcast,
+    Promisc,
+}

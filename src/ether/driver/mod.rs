@@ -1,22 +1,14 @@
 use super::{header, MACAddress, BROADCAST_MAC_ADDR};
 use crate::arp::error::ARPError;
-use crate::arp::header::{ARPHeader, ARPHRD_ETHER, ARPOP_REPLY, ETHERTYPE_IP};
-use crate::arp::{ARPResolve, EtherIPPayload};
+use crate::arp::ARPResolve;
 use crate::ip::header::IPHeaderWithoutOptions;
 use crate::ip::icmp;
 use crate::ip::IPAddress;
+use crate::Destination;
 use map_struct::Mappable;
-use std::collections::HashMap;
 
 mod errors;
 use errors::IPError;
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum FrameDestination {
-    ToMyself,
-    Broadcast,
-    Promisc,
-}
 
 pub struct EthernetDriver<T: ARPResolve<MACAddress, IPAddress> + Default> {
     promisc: bool,
@@ -33,12 +25,12 @@ impl<T: ARPResolve<MACAddress, IPAddress> + Default> EthernetDriver<T> {
         }
     }
 
-    fn analyze_arp(&mut self, data: &[u8], frame_dst: FrameDestination) -> Result<(), ARPError> {
+    fn analyze_arp(&mut self, data: &[u8], frame_dst: Destination) -> Result<(), ARPError> {
         println!("Received ARP packet",);
-        self.arp_resolver.parse(data, &self.mac_addr)
+        self.arp_resolver.parse(data, &self.mac_addr, frame_dst)
     }
 
-    fn analyze_ipv4(&self, data: &[u8], frame_dst: FrameDestination) -> Result<(), IPError> {
+    fn analyze_ipv4(&self, data: &[u8], frame_dst: Destination) -> Result<(), IPError> {
         println!("Received IPv4 packet",);
         let (header, _) = IPHeaderWithoutOptions::mapped(&data).ok_or(IPError::InvalidIPPacket)?;
 
@@ -59,7 +51,7 @@ impl<T: ARPResolve<MACAddress, IPAddress> + Default> EthernetDriver<T> {
 
         let payload = &data[header_length_in_byte..];
 
-        if frame_dst == FrameDestination::Promisc {
+        if frame_dst == Destination::Promisc {
             return Ok(());
         }
 
@@ -75,14 +67,14 @@ impl<T: ARPResolve<MACAddress, IPAddress> + Default> EthernetDriver<T> {
 
     pub fn analyze(&mut self, mac_header: &header::MACHeader, data: &[u8]) {
         let frame_dst = if mac_header.dst_mac == self.mac_addr {
-            FrameDestination::ToMyself
+            Destination::ToMyself
         } else if mac_header.dst_mac == BROADCAST_MAC_ADDR {
-            FrameDestination::Broadcast
+            Destination::Broadcast
         } else {
-            FrameDestination::Promisc
+            Destination::Promisc
         };
 
-        if !self.promisc && frame_dst == FrameDestination::Promisc {
+        if !self.promisc && frame_dst == Destination::Promisc {
             return;
         }
 
