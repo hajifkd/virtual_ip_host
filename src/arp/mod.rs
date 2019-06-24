@@ -23,25 +23,23 @@ unsafe impl Mappable for EtherIPPayload {}
 
 pub trait ARPResolve<S: Hash, T: Hash> {
     // fn resolve(&mut self, key: T) -> impl Future<S>;
-    fn parse(&mut self, data: &[u8]) -> Result<(), ARPError>;
+    fn parse(&mut self, data: &[u8], my_addr: &S) -> Result<(), ARPError>;
 }
 
 pub struct EtherIPResolver {
-    mac_addr: MACAddress,
     arp_table: HashMap<IPAddress, MACAddress>,
 }
 
-impl EtherIPResolver {
-    pub fn new(mac_addr: MACAddress) -> Self {
+impl Default for EtherIPResolver {
+    fn default() -> Self {
         EtherIPResolver {
-            mac_addr,
             arp_table: HashMap::new(),
         }
     }
 }
 
 impl ARPResolve<MACAddress, IPAddress> for EtherIPResolver {
-    fn parse(&mut self, data: &[u8]) -> Result<(), ARPError> {
+    fn parse(&mut self, data: &[u8], mac_addr: &MACAddress) -> Result<(), ARPError> {
         println!("Received ARP packet",);
         let (header, payload) = ARPHeader::mapped(&data).ok_or(ARPError::InvalidARPPacket)?;
         println!("- {:?}", &header);
@@ -60,14 +58,22 @@ impl ARPResolve<MACAddress, IPAddress> for EtherIPResolver {
             ARPOP_REPLY => {
                 let (payload, _) =
                     EtherIPPayload::mapped(payload).ok_or(ARPError::InvalidARPPacket)?;
-                if payload.target_mac_addr == self.mac_addr {
+
+                println!(
+                    "- ARP Reply from {sender_ip:?} ({sender_mac:?}) to {target_ip:?} ({target_mac:?})",
+                    sender_ip = { payload.sender_ip_addr }.from_network_endian(),
+                    sender_mac = payload.sender_mac_addr,
+                    target_ip = { payload.target_ip_addr }.from_network_endian(),
+                    target_mac = payload.target_mac_addr
+                );
+
+                if payload.target_mac_addr == *mac_addr {
                     let ip_addr = { payload.sender_ip_addr }.from_network_endian();
                     println!("- Registered IP Address: {:?}", ip_addr);
                     self.arp_table.insert(ip_addr, payload.sender_mac_addr);
-                    Ok(())
-                } else {
-                    Err(ARPError::InvalidARPPacket)
                 }
+
+                Ok(())
             }
             op_code => Err(ARPError::UnsupportedOperationCode(op_code)),
         }

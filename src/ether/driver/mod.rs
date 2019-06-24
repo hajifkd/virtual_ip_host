@@ -1,6 +1,7 @@
 use super::{header, MACAddress, BROADCAST_MAC_ADDR};
+use crate::arp::error::ARPError;
 use crate::arp::header::{ARPHeader, ARPHRD_ETHER, ARPOP_REPLY, ETHERTYPE_IP};
-use crate::arp::EtherIPPayload;
+use crate::arp::{ARPResolve, EtherIPPayload};
 use crate::ip::header::IPHeaderWithoutOptions;
 use crate::ip::icmp;
 use crate::ip::IPAddress;
@@ -8,7 +9,6 @@ use map_struct::Mappable;
 use std::collections::HashMap;
 
 mod errors;
-use errors::ARPError;
 use errors::IPError;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -18,54 +18,24 @@ pub enum FrameDestination {
     Promisc,
 }
 
-pub struct EthernetDriver {
-    mac_addr: MACAddress,
+pub struct EthernetDriver<T: ARPResolve<MACAddress, IPAddress> + Default> {
     promisc: bool,
-    arp_table: HashMap<IPAddress, MACAddress>,
+    mac_addr: MACAddress,
+    arp_resolver: T,
 }
 
-impl EthernetDriver {
+impl<T: ARPResolve<MACAddress, IPAddress> + Default> EthernetDriver<T> {
     pub fn new(mac_addr: MACAddress, promisc: bool) -> Self {
         EthernetDriver {
-            mac_addr,
             promisc,
-            arp_table: HashMap::new(),
+            mac_addr,
+            arp_resolver: T::default(),
         }
     }
 
     fn analyze_arp(&mut self, data: &[u8], frame_dst: FrameDestination) -> Result<(), ARPError> {
         println!("Received ARP packet",);
-        let (header, payload) = ARPHeader::mapped(&data).ok_or(ARPError::InvalidARPPacket)?;
-        println!("- {:?}", &header);
-        if frame_dst == FrameDestination::Promisc {
-            return Ok(());
-        }
-
-        let has = u16::from_be(header.hard_addr_space);
-        if has != ARPHRD_ETHER {
-            return Err(ARPError::UnsupportedHardwareAddressSpace(has));
-        }
-
-        let pas = u16::from_be(header.proto_addr_space);
-        if pas != ETHERTYPE_IP {
-            return Err(ARPError::UnsupportedProtocolAddressSpace(pas));
-        }
-
-        match u16::from_be(header.op_code) {
-            ARPOP_REPLY => {
-                let (payload, _) =
-                    EtherIPPayload::mapped(payload).ok_or(ARPError::InvalidARPPacket)?;
-                if payload.target_mac_addr == self.mac_addr {
-                    let ip_addr = { payload.sender_ip_addr }.from_network_endian();
-                    println!("- Registered IP Address: {:?}", ip_addr);
-                    self.arp_table.insert(ip_addr, payload.sender_mac_addr);
-                    Ok(())
-                } else {
-                    Err(ARPError::InvalidARPPacket)
-                }
-            }
-            op_code => Err(ARPError::UnsupportedOperationCode(op_code)),
-        }
+        self.arp_resolver.parse(data, &self.mac_addr)
     }
 
     fn analyze_ipv4(&self, data: &[u8], frame_dst: FrameDestination) -> Result<(), IPError> {
