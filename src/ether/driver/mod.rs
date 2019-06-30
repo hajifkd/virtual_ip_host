@@ -10,24 +10,24 @@ use map_struct::Mappable;
 mod errors;
 use errors::IPError;
 
-pub struct EthernetDriver<T: ARPResolve<MACAddress, IPAddress> + Default> {
+pub struct EthernetDriver<T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>> {
     promisc: bool,
     mac_addr: MACAddress,
     arp_resolver: T,
 }
 
-impl<T: ARPResolve<MACAddress, IPAddress> + Default> EthernetDriver<T> {
+impl<T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>> EthernetDriver<T> {
     pub fn new(mac_addr: MACAddress, promisc: bool) -> Self {
         EthernetDriver {
             promisc,
             mac_addr,
-            arp_resolver: T::default(),
+            arp_resolver: T::new(mac_addr.clone()),
         }
     }
 
     fn analyze_arp(&mut self, data: &[u8], frame_dst: Destination) -> Result<(), ARPError> {
         println!("Received ARP packet",);
-        self.arp_resolver.parse(data, &self.mac_addr, frame_dst)
+        self.arp_resolver.parse(data, frame_dst)
     }
 
     fn analyze_ipv4(&self, data: &[u8], frame_dst: Destination) -> Result<(), IPError> {

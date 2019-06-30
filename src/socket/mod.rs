@@ -91,7 +91,7 @@ impl Socket {
         }
     }
 
-    pub unsafe fn recv<T: ARPResolve<MACAddress, IPAddress> + Default>(
+    pub unsafe fn recv<T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>>(
         &self,
         analyzer: &mut EthernetDriver<T>,
     ) {

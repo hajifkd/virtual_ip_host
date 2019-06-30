@@ -2,7 +2,6 @@ use super::ether::MACAddress;
 use super::ip::IPAddress;
 use map_struct::Mappable;
 use std::collections::HashMap;
-use std::hash::Hash;
 
 use crate::Destination;
 use error::ARPError;
@@ -22,30 +21,31 @@ pub struct EtherIPPayload {
 
 unsafe impl Mappable for EtherIPPayload {}
 
-pub trait ARPResolve<S: Hash, T: Hash> {
-    // fn resolve(&mut self, key: T) -> impl Future<S>;
-    fn parse(&mut self, data: &[u8], my_addr: &S, dst: Destination) -> Result<(), ARPError>;
+pub trait ARPResolve {
+    type InternetAddress;
+    type LinkAddress;
+    fn new(my_addr: Self::LinkAddress) -> Self;
+    // fn resolve(&mut self, key: &Self::InternetAddress) -> impl Future<Self::LinkAddress>;
+    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ARPError>;
 }
 
 pub struct EtherIPResolver {
     arp_table: HashMap<IPAddress, MACAddress>,
+    my_addr: MACAddress,
 }
 
-impl Default for EtherIPResolver {
-    fn default() -> Self {
+impl ARPResolve for EtherIPResolver {
+    type InternetAddress = IPAddress;
+    type LinkAddress = MACAddress;
+
+    fn new(mac_addr: MACAddress) -> Self {
         EtherIPResolver {
             arp_table: HashMap::new(),
+            my_addr: mac_addr,
         }
     }
-}
 
-impl ARPResolve<MACAddress, IPAddress> for EtherIPResolver {
-    fn parse(
-        &mut self,
-        data: &[u8],
-        mac_addr: &MACAddress,
-        dst: Destination,
-    ) -> Result<(), ARPError> {
+    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ARPError> {
         println!("Received ARP packet",);
         let (header, payload) = ARPHeader::mapped(&data).ok_or(ARPError::InvalidARPPacket)?;
         println!("- {:?}", &header);
@@ -65,7 +65,7 @@ impl ARPResolve<MACAddress, IPAddress> for EtherIPResolver {
                 let (payload, _) =
                     EtherIPPayload::mapped(payload).ok_or(ARPError::InvalidARPPacket)?;
 
-                if payload.target_mac_addr == *mac_addr {
+                if payload.target_mac_addr == self.my_addr {
                     let ip_addr = { payload.sender_ip_addr }.from_network_endian();
                     println!("- Registered IP Address: {:?}", ip_addr);
                     self.arp_table.insert(ip_addr, payload.sender_mac_addr);
