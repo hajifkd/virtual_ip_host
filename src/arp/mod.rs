@@ -66,7 +66,7 @@ impl ARPResolve for EtherIPResolver {
                     EtherIPPayload::mapped(payload).ok_or(ARPError::InvalidARPPacket)?;
 
                 if payload.target_mac_addr == self.my_addr {
-                    let ip_addr = { payload.sender_ip_addr }.from_network_endian();
+                    let ip_addr = { payload.sender_ip_addr };
                     println!("- Registered IP Address: {:?}", ip_addr);
                     self.arp_table.insert(ip_addr, payload.sender_mac_addr);
                 } else if dst != Destination::Promisc {
@@ -75,9 +75,9 @@ impl ARPResolve for EtherIPResolver {
 
                 println!(
                     "- ARP Reply from {sender_ip:?} ({sender_mac:?}) to {target_ip:?} ({target_mac:?})",
-                    sender_ip = { payload.sender_ip_addr }.from_network_endian(),
+                    sender_ip = { payload.sender_ip_addr },
                     sender_mac = payload.sender_mac_addr,
-                    target_ip = { payload.target_ip_addr }.from_network_endian(),
+                    target_ip = { payload.target_ip_addr },
                     target_mac = payload.target_mac_addr
                 );
 

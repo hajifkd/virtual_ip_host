@@ -1,27 +1,45 @@
 use super::{header, MACAddress, BROADCAST_MAC_ADDR};
 use crate::arp::error::ARPError;
 use crate::arp::ARPResolve;
-use crate::ip::header::IPHeaderWithoutOptions;
-use crate::ip::icmp;
+use crate::ip::error::IPError;
+
 use crate::ip::IPAddress;
+use crate::ip::IPParse;
 use crate::Destination;
-use map_struct::Mappable;
+use crate::LinkDriver;
 
-mod errors;
-use errors::IPError;
-
-pub struct EthernetDriver<T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>> {
+pub struct EthernetDriver<T, S>
+where
+    T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>,
+    S: IPParse,
+{
     promisc: bool,
     mac_addr: MACAddress,
     arp_resolver: T,
+    ip_parser: S,
 }
 
-impl<T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>> EthernetDriver<T> {
-    pub fn new(mac_addr: MACAddress, promisc: bool) -> Self {
+impl<T, S> LinkDriver for EthernetDriver<T, S>
+where
+    T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>,
+    S: IPParse,
+{
+    fn send(&self, _data: &[u8]) {
+        unimplemented!();
+    }
+}
+
+impl<T, S> EthernetDriver<T, S>
+where
+    T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>,
+    S: IPParse,
+{
+    pub fn new(mac_addr: MACAddress, ip_addr: IPAddress, promisc: bool) -> Self {
         EthernetDriver {
             promisc,
             mac_addr,
             arp_resolver: T::new(mac_addr.clone()),
+            ip_parser: S::new(ip_addr.clone()),
         }
     }
 
@@ -32,33 +50,7 @@ impl<T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>> Ether
 
     fn analyze_ipv4(&self, data: &[u8], frame_dst: Destination) -> Result<(), IPError> {
         println!("Received IPv4 packet",);
-        let (header, _) = IPHeaderWithoutOptions::mapped(&data).ok_or(IPError::InvalidIPPacket)?;
-
-        if header.version() != 4 {
-            return Err(IPError::Unimplemented);
-        }
-
-        if !header.is_valid(&data) {
-            return Err(IPError::InvalidChecksum);
-        }
-
-        // TODO flagmentation
-
-        let header_length_in_byte = (header.ihl() * 4) as usize;
-        if header_length_in_byte >= data.len() {
-            return Err(IPError::InvalidIPPacket);
-        }
-
-        let payload = &data[header_length_in_byte..];
-
-        if frame_dst == Destination::Promisc {
-            return Ok(());
-        }
-
-        match header.protocol {
-            icmp::ICMP_PROTOCOL_NUMBER => Err(IPError::Unimplemented),
-            _ => Err(IPError::Unimplemented),
-        }
+        self.ip_parser.parse(data, frame_dst, self)
     }
 
     fn unknown_type(&self, ether_type: u16) {

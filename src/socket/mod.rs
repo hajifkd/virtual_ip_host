@@ -8,6 +8,7 @@ use crate::ether::driver::EthernetDriver;
 use crate::ether::header::MACHeader;
 use crate::ether::MACAddress;
 use crate::ip::IPAddress;
+use crate::ip::IPParse;
 use map_struct::Mappable;
 
 mod ifreq;
@@ -91,10 +92,11 @@ impl Socket {
         }
     }
 
-    pub unsafe fn recv<T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>>(
-        &self,
-        analyzer: &mut EthernetDriver<T>,
-    ) {
+    pub unsafe fn recv<T, S>(&self, analyzer: &mut EthernetDriver<T, S>)
+    where
+        T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>,
+        S: IPParse,
+    {
         loop {
             // todo use aio?
             let length = 2048;

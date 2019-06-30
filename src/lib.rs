@@ -15,3 +15,7 @@ pub enum Destination {
     Broadcast,
     Promisc,
 }
+
+pub trait LinkDriver {
+    fn send(&self, data: &[u8]);
+}
