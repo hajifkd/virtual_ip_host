@@ -2,7 +2,7 @@ use map_struct::Mappable;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C, packed)]
-pub struct ARPHeader {
+pub struct ArpHeader {
     pub hard_addr_space: u16,
     pub proto_addr_space: u16,
     pub hard_addr_len: u8,
@@ -10,7 +10,7 @@ pub struct ARPHeader {
     pub op_code: u16,
 }
 
-unsafe impl Mappable for ARPHeader {}
+unsafe impl Mappable for ArpHeader {}
 
 pub const ARPHRD_ETHER: u16 = 1;
 pub const ETHERTYPE_IP: u16 = 0x0800;

@@ -6,23 +6,23 @@ pub mod header;
 
 #[repr(C, packed)]
 #[derive(PartialEq, Eq, Copy, Clone, Hash)]
-pub struct MACAddress {
+pub struct MacAddress {
     pub address: [u8; 6],
 }
 
-impl MACAddress {
+impl MacAddress {
     pub fn new(address: [u8; 6]) -> Self {
-        MACAddress { address }
+        MacAddress { address }
     }
 }
 
-unsafe impl Mappable for MACAddress {}
+unsafe impl Mappable for MacAddress {}
 
-pub const BROADCAST_MAC_ADDR: MACAddress = MACAddress {
+pub const BROADCAST_MAC_ADDR: MacAddress = MacAddress {
     address: [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF],
 };
 
-impl fmt::Debug for MACAddress {
+impl fmt::Debug for MacAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, n) in self.address.iter().enumerate() {
             if i != 0 {

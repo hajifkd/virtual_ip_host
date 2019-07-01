@@ -1,5 +1,5 @@
 #[derive(Debug, Fail)]
-pub enum IPError {
+pub enum IpError {
     #[fail(display = "unsupported protocol: 0x{:02X}", _0)]
     UnsupportedProtocol(u8),
 
@@ -7,7 +7,7 @@ pub enum IPError {
     Unimplemented,
 
     #[fail(display = "invalid IP packet")]
-    InvalidIPPacket,
+    InvalidIpPacket,
 
     #[fail(display = "invalid checksum")]
     InvalidChecksum,

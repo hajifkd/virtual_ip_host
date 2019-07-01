@@ -1,5 +1,5 @@
 #[derive(Debug, Fail)]
-pub enum ARPError {
+pub enum ArpError {
     #[fail(display = "unsupported hardware address space: 0x{:04X}", _0)]
     UnsupportedHardwareAddressSpace(u16),
 
@@ -10,5 +10,5 @@ pub enum ARPError {
     UnsupportedOperationCode(u16),
 
     #[fail(display = "invalid ARP packet")]
-    InvalidARPPacket,
+    InvalidArpPacket,
 }

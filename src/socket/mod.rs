@@ -3,12 +3,12 @@ use libc::{
     ETH_P_ALL, PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
 };
 
-use crate::arp::ARPResolve;
+use crate::arp::ArpResolve;
 use crate::ether::driver::EthernetDriver;
-use crate::ether::header::MACHeader;
-use crate::ether::MACAddress;
-use crate::ip::IPAddress;
-use crate::ip::IPParse;
+use crate::ether::header::MacHeader;
+use crate::ether::MacAddress;
+use crate::ip::IpAddress;
+use crate::ip::IpParse;
 use map_struct::Mappable;
 
 mod ifreq;
@@ -94,15 +94,15 @@ impl Socket {
 
     pub unsafe fn recv<T, S>(&self, analyzer: &mut EthernetDriver<T, S>)
     where
-        T: ARPResolve<LinkAddress = MACAddress, InternetAddress = IPAddress>,
-        S: IPParse,
+        T: ArpResolve<LinkAddress = MacAddress, InternetAddress = IpAddress>,
+        S: IpParse,
     {
         loop {
             // todo use aio?
             let length = 2048;
             let mut buf = vec![0u8; length];
             let l_recv = recv(self.fd, buf.as_mut_ptr() as _, length, 0) as usize;
-            MACHeader::mapped(&buf[..l_recv]).map(|(h, d)| analyzer.analyze(h, d));
+            MacHeader::mapped(&buf[..l_recv]).map(|(h, d)| analyzer.analyze(h, d));
         }
     }
 

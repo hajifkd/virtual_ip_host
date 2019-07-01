@@ -1,10 +1,10 @@
-use super::ether::MACAddress;
-use super::ip::IPAddress;
+use crate::ether::MacAddress;
+use crate::ip::IpAddress;
 use map_struct::Mappable;
 use std::collections::HashMap;
 
 use crate::Destination;
-use error::ARPError;
+use error::ArpError;
 use header::*;
 
 pub mod error;
@@ -12,65 +12,65 @@ pub mod header;
 
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
-pub struct EtherIPPayload {
-    pub sender_mac_addr: MACAddress,
-    pub sender_ip_addr: IPAddress,
-    pub target_mac_addr: MACAddress,
-    pub target_ip_addr: IPAddress,
+pub struct EtherIpPayload {
+    pub sender_mac_addr: MacAddress,
+    pub sender_ip_addr: IpAddress,
+    pub target_mac_addr: MacAddress,
+    pub target_ip_addr: IpAddress,
 }
 
-unsafe impl Mappable for EtherIPPayload {}
+unsafe impl Mappable for EtherIpPayload {}
 
-pub trait ARPResolve {
+pub trait ArpResolve {
     type InternetAddress;
     type LinkAddress;
     fn new(my_addr: Self::LinkAddress) -> Self;
     // fn resolve(&mut self, key: &Self::InternetAddress) -> impl Future<Self::LinkAddress>;
-    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ARPError>;
+    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ArpError>;
 }
 
-pub struct EtherIPResolver {
-    arp_table: HashMap<IPAddress, MACAddress>,
-    my_addr: MACAddress,
+pub struct EtherIpResolver {
+    arp_table: HashMap<IpAddress, MacAddress>,
+    my_addr: MacAddress,
 }
 
-impl ARPResolve for EtherIPResolver {
-    type InternetAddress = IPAddress;
-    type LinkAddress = MACAddress;
+impl ArpResolve for EtherIpResolver {
+    type InternetAddress = IpAddress;
+    type LinkAddress = MacAddress;
 
-    fn new(mac_addr: MACAddress) -> Self {
-        EtherIPResolver {
+    fn new(mac_addr: MacAddress) -> Self {
+        EtherIpResolver {
             arp_table: HashMap::new(),
             my_addr: mac_addr,
         }
     }
 
-    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ARPError> {
+    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ArpError> {
         println!("Received ARP packet",);
-        let (header, payload) = ARPHeader::mapped(&data).ok_or(ARPError::InvalidARPPacket)?;
+        let (header, payload) = ArpHeader::mapped(&data).ok_or(ArpError::InvalidArpPacket)?;
         println!("- {:?}", &header);
 
         let has = u16::from_be(header.hard_addr_space);
         if has != ARPHRD_ETHER {
-            return Err(ARPError::UnsupportedHardwareAddressSpace(has));
+            return Err(ArpError::UnsupportedHardwareAddressSpace(has));
         }
 
         let pas = u16::from_be(header.proto_addr_space);
         if pas != ETHERTYPE_IP {
-            return Err(ARPError::UnsupportedProtocolAddressSpace(pas));
+            return Err(ArpError::UnsupportedProtocolAddressSpace(pas));
         }
 
         match u16::from_be(header.op_code) {
             ARPOP_REPLY => {
                 let (payload, _) =
-                    EtherIPPayload::mapped(payload).ok_or(ARPError::InvalidARPPacket)?;
+                    EtherIpPayload::mapped(payload).ok_or(ArpError::InvalidArpPacket)?;
 
                 if payload.target_mac_addr == self.my_addr {
                     let ip_addr = { payload.sender_ip_addr };
                     println!("- Registered IP Address: {:?}", ip_addr);
                     self.arp_table.insert(ip_addr, payload.sender_mac_addr);
                 } else if dst != Destination::Promisc {
-                    return Err(ARPError::InvalidARPPacket);
+                    return Err(ArpError::InvalidArpPacket);
                 }
 
                 println!(
@@ -83,7 +83,7 @@ impl ARPResolve for EtherIPResolver {
 
                 Ok(())
             }
-            op_code => Err(ARPError::UnsupportedOperationCode(op_code)),
+            op_code => Err(ArpError::UnsupportedOperationCode(op_code)),
         }
     }
 }

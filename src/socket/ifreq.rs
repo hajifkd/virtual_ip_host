@@ -4,7 +4,7 @@ pub const IFNAMSIZ: usize = 16;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub union IFReqResult {
+pub union IfreqResult {
     pub ifr_addr: sockaddr,
     pub ifr_dstaddr: sockaddr,
     pub ifr_broadaddr: sockaddr,
@@ -34,5 +34,5 @@ pub union IFReqResult {
 #[repr(C)]
 pub struct ifreq {
     pub ifr_name: [c_char; IFNAMSIZ],
-    pub result: IFReqResult,
+    pub result: IfreqResult,
 }

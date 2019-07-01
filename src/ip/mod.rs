@@ -1,6 +1,6 @@
 use crate::Destination;
-use error::IPError;
-use header::IPHeaderWithoutOptions;
+use error::IpError;
+use header::IpHeaderWithoutOptions;
 use icmp::error::IcmpError;
 use map_struct::Mappable;
 use std::fmt;
@@ -11,17 +11,17 @@ pub mod icmp;
 
 #[repr(transparent)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub struct IPAddress(u32);
+pub struct IpAddress(u32);
 
-impl IPAddress {
+impl IpAddress {
     pub fn new_be_bytes(addr: [u8; 4]) -> Self {
-        IPAddress(u32::from_be_bytes(addr))
+        IpAddress(u32::from_be_bytes(addr))
     }
 }
 
-unsafe impl Mappable for IPAddress {}
+unsafe impl Mappable for IpAddress {}
 
-impl fmt::Debug for IPAddress {
+impl fmt::Debug for IpAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let addrs = self.0.to_be_bytes();
         for (i, addr) in addrs.iter().enumerate() {
@@ -34,30 +34,30 @@ impl fmt::Debug for IPAddress {
     }
 }
 
-pub trait IPParse {
-    fn new(my_addr: IPAddress) -> Self;
+pub trait IpParse {
+    fn new(my_addr: IpAddress) -> Self;
     // Should return impl Future
     fn parse<T: crate::LinkDriver>(
         &self,
         data: &[u8],
         frame_dst: Destination,
         driver: &T,
-    ) -> Result<(), IPError>;
+    ) -> Result<(), IpError>;
 }
 
-pub struct IPDriver {
-    my_addr: IPAddress,
+pub struct IpDriver {
+    my_addr: IpAddress,
 }
 
-impl IPDriver {
+impl IpDriver {
     fn parse_and_reply_icmp(data: &[u8]) -> Result<(), IcmpError> {
         Ok(())
     }
 }
 
-impl IPParse for IPDriver {
-    fn new(my_addr: IPAddress) -> Self {
-        IPDriver { my_addr }
+impl IpParse for IpDriver {
+    fn new(my_addr: IpAddress) -> Self {
+        IpDriver { my_addr }
     }
 
     fn parse<T: crate::LinkDriver>(
@@ -65,22 +65,22 @@ impl IPParse for IPDriver {
         data: &[u8],
         frame_dst: Destination,
         driver: &T,
-    ) -> Result<(), IPError> {
-        let (header, _) = IPHeaderWithoutOptions::mapped(&data).ok_or(IPError::InvalidIPPacket)?;
+    ) -> Result<(), IpError> {
+        let (header, _) = IpHeaderWithoutOptions::mapped(&data).ok_or(IpError::InvalidIpPacket)?;
 
         if header.version() != 4 {
-            return Err(IPError::Unimplemented);
+            return Err(IpError::Unimplemented);
         }
 
         if !header.is_valid(&data) {
-            return Err(IPError::InvalidChecksum);
+            return Err(IpError::InvalidChecksum);
         }
 
         // TODO flagmentation
 
         let header_length_in_byte = (header.ihl() * 4) as usize;
         if header_length_in_byte >= data.len() {
-            return Err(IPError::InvalidIPPacket);
+            return Err(IpError::InvalidIpPacket);
         }
 
         let payload = &data[header_length_in_byte..];
@@ -90,8 +90,8 @@ impl IPParse for IPDriver {
         }
 
         match header.protocol {
-            icmp::ICMP_PROTOCOL_NUMBER => Err(IPError::Unimplemented),
-            _ => Err(IPError::Unimplemented),
+            icmp::ICMP_PROTOCOL_NUMBER => Err(IpError::Unimplemented),
+            _ => Err(IpError::Unimplemented),
         }
     }
 }
