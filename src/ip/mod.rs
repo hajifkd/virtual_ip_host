@@ -1,6 +1,7 @@
 use crate::Destination;
 use error::IPError;
 use header::IPHeaderWithoutOptions;
+use icmp::error::IcmpError;
 use map_struct::Mappable;
 use std::fmt;
 
@@ -46,6 +47,12 @@ pub trait IPParse {
 
 pub struct IPDriver {
     my_addr: IPAddress,
+}
+
+impl IPDriver {
+    fn parse_and_reply_icmp(data: &[u8]) -> Result<(), IcmpError> {
+        Ok(())
+    }
 }
 
 impl IPParse for IPDriver {

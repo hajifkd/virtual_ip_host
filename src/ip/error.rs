@@ -11,4 +11,7 @@ pub enum IPError {
 
     #[fail(display = "invalid checksum")]
     InvalidChecksum,
+
+    #[fail(display = "{}", _0)]
+    IcmpError(#[fail(cause)] super::icmp::error::IcmpError),
 }
