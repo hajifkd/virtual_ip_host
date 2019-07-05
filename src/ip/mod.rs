@@ -1,4 +1,5 @@
 use crate::Destination;
+use crate::LinkDriver;
 use error::IpError;
 use header::IpHeaderWithoutOptions;
 use icmp::error::IcmpError;
@@ -51,7 +52,7 @@ pub struct IpDriver {
 
 impl IpDriver {
     fn parse_and_reply_icmp(data: &[u8]) -> Result<(), IcmpError> {
-        Ok(())
+        unimplemented!()
     }
 }
 

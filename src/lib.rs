@@ -2,6 +2,7 @@ extern crate libc;
 extern crate map_struct;
 #[macro_use]
 extern crate failure;
+extern crate futures;
 
 pub mod arp;
 pub mod ether;
