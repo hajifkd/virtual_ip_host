@@ -31,7 +31,7 @@ pub struct IcmpDriver {
 }
 
 impl IcmpDriver {
-    fn parse(&self, data: &[u8]) -> Result<IcmpReply, IcmpError> {
+    pub fn parse(&self, data: &[u8]) -> Result<IcmpReply, IcmpError> {
         let (header, payload) = IcmpHeader::mapped(data).ok_or(IcmpError::InvalidIcmpPacket)?;
 
         if utils::checksum(data) != 0 {
@@ -45,31 +45,32 @@ impl IcmpDriver {
         match header.icmp_type {
             ECHO_TYPE => {
                 let (id_seq, data) =
-                    EchoPacketWithoutData::mapped(data).ok_or(IcmpError::InvalidIcmpPacket)?;
+                    EchoPacketWithoutData::mapped(payload).ok_or(IcmpError::InvalidIcmpPacket)?;
 
-                let reply_header = IcmpHeader {
-                    icmp_type: ECHO_REPLY_TYPE,
-                    code: ECHO_CODE,
-                    checksum: 0,
-                };
+                let mut result = vec![0; data.len()];
+                {
+                    let (reply_header, rest) = IcmpHeader::mapped_mut(&mut result).unwrap();
+                    reply_header.icmp_type = ECHO_REPLY_TYPE;
+                    reply_header.code = ECHO_CODE;
 
-                let reply_packet_wo_data = EchoPacketWithoutData {
-                    identifier: id_seq.identifier,
-                    sequence_id: id_seq.sequence_id + 1,
-                };
+                    let (reply_packet_wo_data, rest) =
+                        EchoPacketWithoutData::mapped_mut(rest).unwrap();
+                    reply_packet_wo_data.identifier = id_seq.identifier;
+                    reply_packet_wo_data.sequence_id = id_seq.sequence_id + 1;
 
-                let mut result = vec![];
-                // TODO checksum
-                result.extend_from_slice(reply_header.as_bytes());
-                result.extend_from_slice(reply_packet_wo_data.as_bytes());
-                result.extend_from_slice(data);
+                    rest.copy_from_slice(data);
+                }
+                let checksum = utils::checksum(&result);
+                {
+                    let (reply_header, _) = IcmpHeader::mapped_mut(&mut result).unwrap();
+                    reply_header.checksum = checksum;
+                }
 
-                //Ok(IcmpReply::Reply(result))
-                return unimplemented!();
+                Ok(IcmpReply::Reply(result))
             }
             ECHO_REPLY_TYPE => {
-                return unimplemented!();
-                //Ok(IcmpReply::Nop);
+                //Ok(IcmpReply::Nop)
+                unimplemented!()
             }
             _ => Err(IcmpError::Unimplemented),
         }
