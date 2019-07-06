@@ -14,4 +14,7 @@ pub enum IcmpError {
 
     #[fail(display = "invalid checksum")]
     InvalidChecksum,
+
+    #[fail(display = "no empty echo buffer")]
+    NoEmptyEchoBuffer,
 }
