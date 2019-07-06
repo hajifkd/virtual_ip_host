@@ -40,19 +40,19 @@ fn construct_echo_packet(
         vec![0; size_of::<IcmpHeader>() + size_of::<EchoPacketWithoutData>() + data.len()];
     {
         let (reply_header, rest) = IcmpHeader::mapped_mut(&mut result).unwrap();
-        reply_header.icmp_type = icmp_type;
-        reply_header.code = ECHO_CODE;
+        reply_header.icmp_type = icmp_type.to_be();
+        reply_header.code = ECHO_CODE.to_be();
 
         let (reply_packet_wo_data, rest) = EchoPacketWithoutData::mapped_mut(rest).unwrap();
-        reply_packet_wo_data.identifier = echo_wo_data.identifier;
-        reply_packet_wo_data.sequence_id = echo_wo_data.sequence_id + 1;
+        reply_packet_wo_data.identifier = echo_wo_data.identifier.to_be();
+        reply_packet_wo_data.sequence_id = echo_wo_data.sequence_id.to_be();
 
         rest.copy_from_slice(data);
     }
     let checksum = utils::checksum(&result);
     {
         let (reply_header, _) = IcmpHeader::mapped_mut(&mut result).unwrap();
-        reply_header.checksum = checksum;
+        reply_header.checksum = checksum.to_be();
     }
     result
 }
@@ -95,11 +95,11 @@ impl IcmpDriver {
             return Err(IcmpError::InvalidChecksum);
         }
 
-        if header.code != ECHO_CODE {
+        if u8::from_be(header.code) != ECHO_CODE {
             return Err(IcmpError::Unimplemented);
         }
 
-        match header.icmp_type {
+        match u8::from_be(header.icmp_type) {
             ECHO_TYPE => {
                 let (id_seq, data) =
                     EchoPacketWithoutData::mapped(payload).ok_or(IcmpError::InvalidIcmpPacket)?;
@@ -107,8 +107,8 @@ impl IcmpDriver {
                 let result = construct_echo_packet(
                     ECHO_REPLY_TYPE,
                     EchoPacketWithoutData {
-                        identifier: id_seq.identifier,
-                        sequence_id: id_seq.sequence_id + 1,
+                        identifier: u16::from_be(id_seq.identifier),
+                        sequence_id: u16::from_be(id_seq.sequence_id) + 1,
                     },
                     data,
                 );
@@ -124,13 +124,13 @@ impl IcmpDriver {
 
                 let receiver = self
                     .echo_requests
-                    .get_mut(&{ id_seq.sequence_id })
+                    .get_mut(&u16::from_be(id_seq.identifier))
                     .ok_or(IcmpError::InvalidIcmpPacket)?;
 
                 receiver
                     .try_send(EchoReply {
                         src: from,
-                        sequence_id: id_seq.sequence_id + 1,
+                        sequence_id: u16::from_be(id_seq.sequence_id) + 1,
                         data: data.into(),
                     })
                     .map_err(|_| IcmpError::NoEmptyEchoBuffer)?;

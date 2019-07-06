@@ -3,6 +3,7 @@ use crate::LinkDriver;
 use error::IpError;
 use header::IpHeaderWithoutOptions;
 use icmp::error::IcmpError;
+use icmp::{IcmpDriver, IcmpReply};
 use map_struct::Mappable;
 use std::fmt;
 
@@ -39,7 +40,7 @@ pub trait IpParse {
     fn new(my_addr: IpAddress) -> Self;
     // Should return impl Future
     fn parse<T: crate::LinkDriver>(
-        &self,
+        &mut self,
         data: &[u8],
         frame_dst: Destination,
         driver: &T,
@@ -48,21 +49,42 @@ pub trait IpParse {
 
 pub struct IpDriver {
     my_addr: IpAddress,
+    icmp_driver: IcmpDriver,
 }
 
 impl IpDriver {
-    fn parse_and_reply_icmp(data: &[u8]) -> Result<(), IcmpError> {
-        unimplemented!()
+    fn construct_packet(proto: u8, dst: IpAddress, payload: &[u8]) -> Vec<u8> {
+        let result = vec![];
+
+        result
+    }
+    fn parse_and_reply_icmp<T: LinkDriver>(
+        &mut self,
+        from: IpAddress,
+        data: &[u8],
+        driver: &T,
+    ) -> Result<(), IcmpError> {
+        let reply = self.icmp_driver.parse(from, data)?;
+
+        match reply {
+            IcmpReply::Reply { dst, data } => {}
+            _ => (),
+        }
+
+        Ok(())
     }
 }
 
 impl IpParse for IpDriver {
     fn new(my_addr: IpAddress) -> Self {
-        IpDriver { my_addr }
+        IpDriver {
+            my_addr,
+            icmp_driver: IcmpDriver::new(),
+        }
     }
 
-    fn parse<T: crate::LinkDriver>(
-        &self,
+    fn parse<T: LinkDriver>(
+        &mut self,
         data: &[u8],
         frame_dst: Destination,
         driver: &T,
@@ -91,7 +113,9 @@ impl IpParse for IpDriver {
         }
 
         match header.protocol {
-            icmp::ICMP_PROTOCOL_NUMBER => Err(IpError::Unimplemented),
+            icmp::ICMP_PROTOCOL_NUMBER => {
+                self.parse_and_reply_icmp(header.src_addr, payload, driver).map_err(IpError::IcmpError)
+            }
             _ => Err(IpError::Unimplemented),
         }
     }
