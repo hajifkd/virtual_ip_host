@@ -48,9 +48,18 @@ where
         self.arp_resolver.parse(data, frame_dst)
     }
 
-    fn analyze_ipv4(&self, data: &[u8], frame_dst: Destination) -> Result<(), IpError> {
+    fn analyze_ipv4(&mut self, data: &[u8], frame_dst: Destination) -> Result<(), IpError> {
         println!("Received IPv4 packet",);
-        self.ip_parser.parse(data, frame_dst, self)
+        let packet = {
+            let packet = self.ip_parser.parse(data, frame_dst)?;
+            if packet.is_none() {
+                return Ok(());
+            }
+
+            packet.unwrap()
+        };
+
+        unimplemented!()
     }
 
     fn unknown_type(&self, ether_type: u16) {
