@@ -4,6 +4,8 @@ extern crate map_struct;
 extern crate failure;
 extern crate futures;
 
+use std::future::Future;
+
 pub mod arp;
 pub mod ether;
 pub mod ip;
@@ -15,8 +17,4 @@ pub enum Destination {
     ToMyself,
     Broadcast,
     Promisc,
-}
-
-pub trait LinkDriver {
-    fn send(&self, data: &[u8]);
 }

@@ -20,10 +20,12 @@ fn main() {
         s.enable_promisc_mode()
             .unwrap_or_else(|| utils::show_error_text());
 
-        s.recv(&mut EthernetDriver::<EtherIpResolver, IpDriver>::new(
+        EthernetDriver::<EtherIpResolver, IpDriver>::new(
             MacAddress::new([0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
             IpAddress::new_be_bytes([192, 168, 1, 180]),
             true,
-        ));
+            s,
+        )
+        .recv();
     }
 }

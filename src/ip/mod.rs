@@ -1,5 +1,4 @@
 use crate::Destination;
-use crate::LinkDriver;
 use error::IpError;
 use header::IpHeaderWithoutOptions;
 use icmp::error::IcmpError;
