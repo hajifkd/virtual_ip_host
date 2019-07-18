@@ -4,8 +4,6 @@ extern crate map_struct;
 extern crate failure;
 extern crate futures;
 
-use std::future::Future;
-
 pub mod arp;
 pub mod ether;
 pub mod ip;

@@ -50,7 +50,7 @@ where
         }
     }
 
-    pub fn recv<'a>(mut self) -> impl Future<Output = ()> {
+    pub fn recv<'a>(mut self) -> impl Stream<Item = ()> {
         let (mut sender, receiver) = channel::<Vec<u8>>(N_CHANNEL_BUFFER);
         let socket = self.socket.clone();
 
@@ -60,16 +60,14 @@ where
             sender.try_send(data).expect("The buffer is full");
         });
 
-        receiver
-            .then(move |data| {
-                let d = MacHeader::mapped(&data[..]);
-                if let Some((h, d)) = d {
-                    self.analyze(h, d)
-                } else {
-                    future::lazy(|_| ()).boxed()
-                }
-            })
-            .for_each(|_| future::lazy(|_| ()))
+        receiver.then(move |data| {
+            let d = MacHeader::mapped(&data[..]);
+            if let Some((h, d)) = d {
+                self.analyze(h, d)
+            } else {
+                future::lazy(|_| ()).boxed()
+            }
+        })
     }
 
     fn analyze_arp(
@@ -79,6 +77,8 @@ where
     ) -> Pin<Box<dyn Future<Output = ()>>> {
         println!("Received ARP packet",);
         self.arp_resolver.parse(data, frame_dst);
+
+        // TODO reply
 
         future::lazy(|_| unimplemented!()).boxed()
     }
@@ -90,13 +90,23 @@ where
     ) -> Pin<Box<dyn Future<Output = ()>>> {
         println!("Received IPv4 packet",);
         let packet = {
-            let packet = self.ip_parser.parse(data, frame_dst).unwrap();
+            let packet = self.ip_parser.parse(data, frame_dst);
+
+            if let Err(err) = packet {
+                println!(" - {}", err);
+                return future::lazy(|_| ()).boxed();
+            }
+
+            let packet = packet.unwrap();
+
             if packet.is_none() {
                 return future::lazy(|_| ()).boxed();
             }
 
             packet.unwrap()
         };
+
+        // TODO parse
 
         future::lazy(|_| ()).boxed()
     }
