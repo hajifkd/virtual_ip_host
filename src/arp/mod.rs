@@ -10,6 +10,11 @@ use header::*;
 pub mod error;
 pub mod header;
 
+pub enum ArpReply<T> {
+    Reply { dst: T, data: Vec<u8> },
+    Nop,
+}
+
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct EtherIpPayload {
@@ -26,7 +31,7 @@ pub trait ArpResolve {
     type LinkAddress;
     fn new(my_addr: Self::LinkAddress) -> Self;
     // fn resolve(&mut self, key: &Self::InternetAddress) -> impl Future<Self::LinkAddress>;
-    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ArpError>;
+    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<ArpReply<Self::LinkAddress>, ArpError>;
 }
 
 pub struct EtherIpResolver {
@@ -45,7 +50,7 @@ impl ArpResolve for EtherIpResolver {
         }
     }
 
-    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<(), ArpError> {
+    fn parse(&mut self, data: &[u8], dst: Destination) -> Result<ArpReply<Self::LinkAddress>, ArpError> {
         println!("Received ARP packet",);
         let (header, payload) = ArpHeader::mapped(&data).ok_or(ArpError::InvalidArpPacket)?;
         println!("- {:?}", &header);
@@ -81,7 +86,7 @@ impl ArpResolve for EtherIpResolver {
                     target_mac = payload.target_mac_addr
                 );
 
-                Ok(())
+                Ok(ArpReply::Nop)
             }
             op_code => Err(ArpError::UnsupportedOperationCode(op_code)),
         }

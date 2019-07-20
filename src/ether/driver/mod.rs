@@ -1,5 +1,5 @@
 use super::{header, MacAddress, BROADCAST_MAC_ADDR};
-use crate::arp::ArpResolve;
+use crate::arp::{ArpReply, ArpResolve};
 
 use crate::ether::header::MacHeader;
 use crate::ip::IpAddress;
@@ -70,17 +70,35 @@ where
         })
     }
 
+    fn constract_ethernet_frame(&self, dst: MacAddress, ether_type: u16, data: &[u8]) -> Vec<u8> {
+        let mac_header = MacHeader {
+            dst_mac: dst,
+            src_mac: self.mac_addr,
+            ether_type,
+        };
+
+        let mut result = mac_header.as_bytes().to_vec();
+        result.extend_from_slice(data);
+
+        result
+    }
+
     fn analyze_arp(
         &mut self,
         data: &[u8],
         frame_dst: Destination,
     ) -> Pin<Box<dyn Future<Output = ()>>> {
         println!("Received ARP packet",);
-        self.arp_resolver.parse(data, frame_dst);
-
-        // TODO reply
-
-        future::lazy(|_| unimplemented!()).boxed()
+        match self.arp_resolver.parse(data, frame_dst) {
+            Err(err) => {
+                println!("- {}", err);
+            }
+            Ok(ArpReply::Nop) => {}
+            Ok(ArpReply::Reply { dst, data }) => {
+                self.send(&self.constract_ethernet_frame(dst, header::ETHERTYPE_ARP, &data));
+            }
+        }
+        future::lazy(|_| ()).boxed()
     }
 
     fn analyze_ipv4(
@@ -133,7 +151,7 @@ where
             return future::lazy(|_| ()).boxed();
         }
 
-        let ether_type = u16::from_be_bytes(mac_header.ether_type);
+        let ether_type = u16::from_be(mac_header.ether_type);
 
         match ether_type {
             header::ETHERTYPE_IP => self.analyze_ipv4(data, frame_dst),

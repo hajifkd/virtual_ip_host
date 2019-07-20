@@ -6,7 +6,7 @@ use map_struct::Mappable;
 pub struct MacHeader {
     pub dst_mac: MacAddress,
     pub src_mac: MacAddress,
-    pub ether_type: [u8; 2],
+    pub ether_type: u16,
 }
 
 unsafe impl Mappable for MacHeader {}
