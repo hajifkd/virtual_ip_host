@@ -37,7 +37,7 @@ where
         EthernetDriver {
             promisc,
             mac_addr,
-            arp_resolver: T::new(mac_addr.clone()),
+            arp_resolver: T::new(mac_addr.clone(), ip_addr.clone()),
             ip_parser: S::new(ip_addr.clone()),
             socket,
         }
