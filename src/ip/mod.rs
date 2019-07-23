@@ -23,6 +23,14 @@ impl IpAddress {
     pub fn new_be_bytes(addr: [u8; 4]) -> Self {
         IpAddress(u32::from_be_bytes(addr))
     }
+
+    pub fn from_be(addr: IpAddress) -> IpAddress {
+        IpAddress(u32::from_be(addr.0))
+    }
+
+    pub fn to_be(addr: IpAddress) -> IpAddress {
+        IpAddress(u32::to_be(addr.0))
+    }
 }
 
 unsafe impl Mappable for IpAddress {}

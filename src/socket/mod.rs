@@ -1,5 +1,5 @@
 use libc::{
-    bind, c_int, ioctl, packet_mreq, recv, setsockopt, sockaddr_ll, socket, write, AF_PACKET,
+    bind, c_int, ioctl, packet_mreq, recv, write, setsockopt, sockaddr_ll, socket, AF_PACKET,
     ETH_P_ALL, PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
 };
 
@@ -84,9 +84,7 @@ impl Socket {
         }
     }
 
-    pub unsafe fn recv(&self) -> Vec<u8>
-    {
-    
+    pub unsafe fn recv(&self) -> Vec<u8> {
         let length = 2048;
         let mut buf = vec![0u8; length];
         let l_recv = recv(self.fd, buf.as_mut_ptr() as _, length, 0) as usize;

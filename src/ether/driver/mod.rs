@@ -10,6 +10,7 @@ use crate::Destination;
 use futures::channel::mpsc::channel;
 use futures::future;
 use futures::prelude::*;
+use libc::ETH_ZLEN;
 use map_struct::Mappable;
 use std::future::Future;
 use std::pin::Pin;
@@ -46,7 +47,12 @@ where
     pub fn send(&self, data: &[u8]) {
         // TODO check MTU
         unsafe {
-            self.socket.send(data);
+            let res = self.socket.send(data);
+            println!("{}", res);
+            if res as usize != data.len() {
+                use crate::utils;
+                utils::show_error_text();
+            }
         }
     }
 
@@ -74,11 +80,15 @@ where
         let mac_header = MacHeader {
             dst_mac: dst,
             src_mac: self.mac_addr,
-            ether_type,
+            ether_type: u16::to_be(ether_type),
         };
 
         let mut result = mac_header.as_bytes().to_vec();
         result.extend_from_slice(data);
+
+        if result.len() < ETH_ZLEN as _ {
+            result.resize(ETH_ZLEN as _, 0);
+        }
 
         result
     }

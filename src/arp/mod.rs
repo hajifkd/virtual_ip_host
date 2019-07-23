@@ -91,10 +91,10 @@ impl ArpResolve for EtherIpResolver {
                 let (payload, _) =
                     EtherIpPayload::mapped(payload).ok_or(ArpError::InvalidArpPacket)?;
 
-                if payload.target_mac_addr == self.my_mac_addr && { payload.target_ip_addr }
-                    == self.my_ip_addr
+                if payload.target_mac_addr == self.my_mac_addr
+                    && IpAddress::from_be(payload.target_ip_addr) == self.my_ip_addr
                 {
-                    let ip_addr = { payload.sender_ip_addr };
+                    let ip_addr = IpAddress::from_be(payload.sender_ip_addr);
                     println!("- Registered IP Address: {:?}", ip_addr);
                     self.arp_table.insert(ip_addr, payload.sender_mac_addr);
                 } else if dst != Destination::Promisc {
@@ -103,9 +103,9 @@ impl ArpResolve for EtherIpResolver {
 
                 println!(
                     "- ARP Reply from {sender_ip:?} ({sender_mac:?}) to {target_ip:?} ({target_mac:?})",
-                    sender_ip = { payload.sender_ip_addr },
+                    sender_ip = IpAddress::from_be(payload.sender_ip_addr),
                     sender_mac = payload.sender_mac_addr,
-                    target_ip = { payload.target_ip_addr },
+                    target_ip = IpAddress::from_be(payload.target_ip_addr),
                     target_mac = payload.target_mac_addr
                 );
 
@@ -117,7 +117,7 @@ impl ArpResolve for EtherIpResolver {
 
                 let mut reply = true;
 
-                if { payload.target_ip_addr } != self.my_ip_addr {
+                if IpAddress::from_be(payload.target_ip_addr) != self.my_ip_addr {
                     if dst != Destination::Promisc {
                         return Err(ArpError::InvalidArpPacket);
                     }
@@ -127,9 +127,9 @@ impl ArpResolve for EtherIpResolver {
 
                 println!(
                     "- ARP Request from {sender_ip:?} ({sender_mac:?}) to {target_ip:?} ({target_mac:?})",
-                    sender_ip = { payload.sender_ip_addr },
+                    sender_ip = IpAddress::from_be(payload.sender_ip_addr),
                     sender_mac = payload.sender_mac_addr,
-                    target_ip = { payload.target_ip_addr },
+                    target_ip = IpAddress::from_be(payload.target_ip_addr),
                     target_mac = payload.target_mac_addr
                 );
 
@@ -146,7 +146,7 @@ impl ArpResolve for EtherIpResolver {
 
                     EtherIpResolver::set_header(arp_header, ARPOP_REPLY);
                     ether_ip_payload.sender_mac_addr = self.my_mac_addr;
-                    ether_ip_payload.sender_ip_addr = self.my_ip_addr;
+                    ether_ip_payload.sender_ip_addr = IpAddress::to_be(self.my_ip_addr);
                     ether_ip_payload.target_mac_addr = payload.sender_mac_addr;
                     ether_ip_payload.target_ip_addr = payload.sender_ip_addr;
                 }
