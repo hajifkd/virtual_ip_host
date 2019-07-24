@@ -24,6 +24,10 @@ impl IpAddress {
         IpAddress(u32::from_be_bytes(addr))
     }
 
+    pub fn from_be_int(addr: u32) -> IpAddress {
+        IpAddress(u32::from_be(addr))
+    }
+
     pub fn from_be(addr: IpAddress) -> IpAddress {
         IpAddress(u32::from_be(addr.0))
     }

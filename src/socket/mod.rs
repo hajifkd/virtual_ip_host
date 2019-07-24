@@ -1,6 +1,7 @@
 use libc::{
-    bind, c_int, ioctl, packet_mreq, recv, write, setsockopt, sockaddr_ll, socket, AF_PACKET,
-    ETH_P_ALL, PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW, SOL_PACKET,
+    bind, c_int, ioctl, packet_mreq, recv, sendto, setsockopt, sockaddr_ll, socket, write,
+    AF_PACKET, ETH_ALEN, ETH_P_ALL, PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW,
+    SOL_PACKET,
 };
 
 mod ifreq;
@@ -93,6 +94,24 @@ impl Socket {
     }
 
     pub unsafe fn send(&self, buf: &[u8]) -> isize {
-        write(self.fd, buf.as_ptr() as _, buf.len())
+        let mut sa: sockaddr_ll = std::mem::uninitialized();
+
+        sa.sll_family = AF_PACKET as _;
+        if self.ifindex >= 0 {
+            sa.sll_ifindex = self.ifindex;
+        }
+        sa.sll_halen = ETH_ALEN as _;
+        for i in 0..ETH_ALEN as _ {
+            sa.sll_addr[i] = 0xFF;
+        }
+
+        sendto(
+            self.fd,
+            buf.as_ptr() as _,
+            buf.len(),
+            0,
+            &sa as *const _ as _,
+            std::mem::size_of::<sockaddr_ll>() as _,
+        )
     }
 }

@@ -48,7 +48,6 @@ where
         // TODO check MTU
         unsafe {
             let res = self.socket.send(data);
-            println!("{}", res);
             if res as usize != data.len() {
                 use crate::utils;
                 utils::show_error_text();
@@ -98,7 +97,6 @@ where
         data: &[u8],
         frame_dst: Destination,
     ) -> Pin<Box<dyn Future<Output = ()>>> {
-        println!("Received ARP packet",);
         match self.arp_resolver.parse(data, frame_dst) {
             Err(err) => {
                 println!("- {}", err);

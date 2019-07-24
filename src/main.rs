@@ -24,8 +24,8 @@ fn main() {
 
         let _ = block_on_stream(
             EthernetDriver::<EtherIpResolver, IpDriver>::new(
-                MacAddress::new([0x08, 0x00, 0x27, 0xEF, 0x24, 0xA8]),
-                IpAddress::new_be_bytes([192, 168, 1, 180]),
+                MacAddress::new([0x02, 0x00, 0x00, 0xEF, 0x24, 0xA8]),
+                IpAddress::new_be_bytes([192, 168, 1, 111]),
                 false,
                 s,
             )

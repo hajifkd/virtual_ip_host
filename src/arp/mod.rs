@@ -1,8 +1,12 @@
-use crate::ether::MacAddress;
+use crate::ether::{self, MacAddress};
 use crate::ip::IpAddress;
+use futures::channel::oneshot::{channel, Sender};
+use futures::prelude::*;
 use map_struct::Mappable;
 use std::collections::HashMap;
+use std::future::Future;
 use std::mem;
+use std::pin::Pin;
 
 use crate::Destination;
 use error::ArpError;
@@ -25,13 +29,21 @@ pub struct EtherIpPayload {
     pub target_ip_addr: IpAddress,
 }
 
+pub enum ResolveResult<T> {
+    Found(T),
+    NotFound {
+        packet_to_send: Vec<u8>,
+        result: Pin<Box<dyn Future<Output = Option<T>>>>,
+    },
+}
+
 unsafe impl Mappable for EtherIpPayload {}
 
 pub trait ArpResolve {
     type InternetAddress;
     type LinkAddress;
     fn new(my_hard_addr: Self::LinkAddress, my_inet_addr: Self::InternetAddress) -> Self;
-    // fn resolve(&mut self, key: &Self::InternetAddress) -> impl Future<Self::LinkAddress>;
+    fn resolve(&mut self, key: Self::InternetAddress) -> ResolveResult<Self::LinkAddress>;
     fn parse(
         &mut self,
         data: &[u8],
@@ -43,6 +55,7 @@ pub struct EtherIpResolver {
     arp_table: HashMap<IpAddress, MacAddress>,
     my_mac_addr: MacAddress,
     my_ip_addr: IpAddress,
+    requests: HashMap<IpAddress, Sender<MacAddress>>,
 }
 
 impl EtherIpResolver {
@@ -64,6 +77,34 @@ impl ArpResolve for EtherIpResolver {
             arp_table: HashMap::new(),
             my_mac_addr: mac_addr,
             my_ip_addr: ip_addr,
+            requests: HashMap::new(),
+        }
+    }
+
+    fn resolve(&mut self, key: Self::InternetAddress) -> ResolveResult<MacAddress> {
+        if self.arp_table.contains_key(&key) {
+            let value = self.arp_table[&key];
+            return ResolveResult::Found(value);
+        }
+
+        let mut packet = vec![0u8; mem::size_of::<ArpHeader>() + mem::size_of::<EtherIpPayload>()];
+
+        {
+            let (arp_header, mut payload) = ArpHeader::mapped_mut(&mut packet).unwrap();
+            let (ether_ip_payload, _) = EtherIpPayload::mapped_mut(&mut payload).unwrap();
+            EtherIpResolver::set_header(arp_header, ARPOP_REQUEST);
+            ether_ip_payload.sender_mac_addr = self.my_mac_addr;
+            ether_ip_payload.sender_ip_addr = IpAddress::to_be(self.my_ip_addr);
+            ether_ip_payload.target_mac_addr = ether::BROADCAST_MAC_ADDR;
+            ether_ip_payload.target_ip_addr = key;
+        }
+
+        let (sender, receiver) = channel();
+        self.requests.insert(key, sender);
+
+        ResolveResult::NotFound {
+            packet_to_send: packet,
+            result: receiver.map(Result::ok).boxed(),
         }
     }
 
@@ -136,6 +177,12 @@ impl ArpResolve for EtherIpResolver {
                 if !reply {
                     return Ok(ArpReply::Nop);
                 }
+
+                println!(
+                    "- Sending ARP Reply to {target_ip:?} ({target_mac:?})",
+                    target_ip = IpAddress::from_be(payload.sender_ip_addr),
+                    target_mac = payload.sender_mac_addr
+                );
 
                 let mut result =
                     vec![0u8; mem::size_of::<ArpHeader>() + mem::size_of::<EtherIpPayload>()];
