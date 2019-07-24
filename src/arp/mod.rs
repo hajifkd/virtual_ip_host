@@ -96,7 +96,7 @@ impl ArpResolve for EtherIpResolver {
             ether_ip_payload.sender_mac_addr = self.my_mac_addr;
             ether_ip_payload.sender_ip_addr = IpAddress::to_be(self.my_ip_addr);
             ether_ip_payload.target_mac_addr = ether::BROADCAST_MAC_ADDR;
-            ether_ip_payload.target_ip_addr = key;
+            ether_ip_payload.target_ip_addr = IpAddress::to_be(key);
         }
 
         let (sender, receiver) = channel();
@@ -142,29 +142,26 @@ impl ArpResolve for EtherIpResolver {
                     return Err(ArpError::InvalidArpPacket);
                 }
 
+                let sender_ip = IpAddress::from_be(payload.sender_ip_addr);
+
                 println!(
                     "- ARP Reply from {sender_ip:?} ({sender_mac:?}) to {target_ip:?} ({target_mac:?})",
-                    sender_ip = IpAddress::from_be(payload.sender_ip_addr),
+                    sender_ip = sender_ip,
                     sender_mac = payload.sender_mac_addr,
                     target_ip = IpAddress::from_be(payload.target_ip_addr),
                     target_mac = payload.target_mac_addr
                 );
+
+                if let Some(sender) = self.requests.remove(&sender_ip) {
+                    println!("- Waiting ARP request found.",);
+                    let _ = sender.send(payload.sender_mac_addr);
+                }
 
                 Ok(ArpReply::Nop)
             }
             ARPOP_REQUEST => {
                 let (payload, _) =
                     EtherIpPayload::mapped(payload).ok_or(ArpError::InvalidArpPacket)?;
-
-                let mut reply = true;
-
-                if IpAddress::from_be(payload.target_ip_addr) != self.my_ip_addr {
-                    if dst != Destination::Promisc {
-                        return Err(ArpError::InvalidArpPacket);
-                    }
-
-                    reply = false;
-                }
 
                 println!(
                     "- ARP Request from {sender_ip:?} ({sender_mac:?}) to {target_ip:?} ({target_mac:?})",
@@ -174,8 +171,11 @@ impl ArpResolve for EtherIpResolver {
                     target_mac = payload.target_mac_addr
                 );
 
-                if !reply {
+                if IpAddress::from_be(payload.target_ip_addr) != self.my_ip_addr {
+                    println!("- ARP Request to the other machine. Ignoring...");
                     return Ok(ArpReply::Nop);
+                } else if dst == Destination::Promisc {
+                    return Err(ArpError::InvalidArpPacket);
                 }
 
                 println!(

@@ -1,5 +1,5 @@
 use super::{header, MacAddress, BROADCAST_MAC_ADDR};
-use crate::arp::{ArpReply, ArpResolve};
+use crate::arp::{ArpReply, ArpResolve, ResolveResult};
 
 use crate::ether::header::MacHeader;
 use crate::ip::IpAddress;
@@ -70,9 +70,30 @@ where
             if let Some((h, d)) = d {
                 self.analyze(h, d)
             } else {
-                future::lazy(|_| ()).boxed()
+                future::ready(()).boxed()
             }
         })
+    }
+
+    pub fn resolve(
+        &mut self,
+        ip_addr: IpAddress,
+    ) -> Pin<Box<dyn Future<Output = Option<MacAddress>>>> {
+        match self.arp_resolver.resolve(ip_addr) {
+            ResolveResult::Found(value) => future::ready(Some(value)).boxed(),
+            ResolveResult::NotFound {
+                packet_to_send,
+                result,
+            } => {
+                println!("- Asking {:?} by broadcasting.", ip_addr);
+                self.send(&self.constract_ethernet_frame(
+                    BROADCAST_MAC_ADDR,
+                    header::ETHERTYPE_ARP,
+                    &packet_to_send,
+                ));
+                result
+            }
+        }
     }
 
     fn constract_ethernet_frame(&self, dst: MacAddress, ether_type: u16, data: &[u8]) -> Vec<u8> {
@@ -106,7 +127,7 @@ where
                 self.send(&self.constract_ethernet_frame(dst, header::ETHERTYPE_ARP, &data));
             }
         }
-        future::lazy(|_| ()).boxed()
+        future::ready(()).boxed()
     }
 
     fn analyze_ipv4(
@@ -120,13 +141,13 @@ where
 
             if let Err(err) = packet {
                 println!(" - {}", err);
-                return future::lazy(|_| ()).boxed();
+                return future::ready(()).boxed();
             }
 
             let packet = packet.unwrap();
 
             if packet.is_none() {
-                return future::lazy(|_| ()).boxed();
+                return future::ready(()).boxed();
             }
 
             packet.unwrap()
@@ -134,12 +155,12 @@ where
 
         // TODO parse
 
-        future::lazy(|_| ()).boxed()
+        future::ready(()).boxed()
     }
 
     fn unknown_type(&self, ether_type: u16) -> Pin<Box<dyn Future<Output = ()>>> {
         println!("Unknown ethertype: {:02X}", ether_type);
-        future::lazy(|_| ()).boxed()
+        future::ready(()).boxed()
     }
 
     fn analyze(
@@ -156,7 +177,7 @@ where
         };
 
         if !self.promisc && frame_dst == Destination::Promisc {
-            return future::lazy(|_| ()).boxed();
+            return future::ready(()).boxed();
         }
 
         let ether_type = u16::from_be(mac_header.ether_type);
