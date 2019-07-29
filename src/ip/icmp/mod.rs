@@ -4,6 +4,7 @@ pub mod header;
 
 use super::IpAddress;
 use crate::utils;
+use crate::Destination;
 use echo::{EchoPacketWithoutData, EchoReply};
 use error::IcmpError;
 use futures::channel::mpsc::{channel, Receiver, Sender};
@@ -88,7 +89,13 @@ impl IcmpDriver {
         ))
     }
 
-    pub fn parse(&mut self, from: IpAddress, data: &[u8]) -> Result<IcmpReply, IcmpError> {
+    pub fn parse(
+        &mut self,
+        from: IpAddress,
+        frame_dst: Destination,
+        data: &[u8],
+    ) -> Result<IcmpReply, IcmpError> {
+        println!("- Protocol: ICMP",);
         let (header, payload) = IcmpHeader::mapped(data).ok_or(IcmpError::InvalidIcmpPacket)?;
 
         if utils::checksum(data) != 0 {
@@ -103,6 +110,13 @@ impl IcmpDriver {
             ECHO_TYPE => {
                 let (id_seq, data) =
                     EchoPacketWithoutData::mapped(payload).ok_or(IcmpError::InvalidIcmpPacket)?;
+
+                println!("- ICMP Echo Request from {:?}", from);
+
+                if frame_dst == Destination::Promisc {
+                    println!("- Echo Request to the other machine. Ignoring...");
+                    return Ok(IcmpReply::Nop);
+                }
 
                 let result = construct_echo_packet(
                     ECHO_REPLY_TYPE,
@@ -126,6 +140,8 @@ impl IcmpDriver {
                     .echo_requests
                     .get_mut(&u16::from_be(id_seq.identifier))
                     .ok_or(IcmpError::InvalidIcmpPacket)?;
+
+                println!("- ICMP Echo Reply from {:?}", from);
 
                 receiver
                     .try_send(EchoReply {

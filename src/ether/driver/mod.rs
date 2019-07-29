@@ -2,8 +2,7 @@ use super::{header, MacAddress, BROADCAST_MAC_ADDR};
 use crate::arp::{ArpReply, ArpResolve, ResolveResult};
 
 use crate::ether::header::MacHeader;
-use crate::ip::IpAddress;
-use crate::ip::IpParse;
+use crate::ip::{IpAddress, IpParse, IpReply};
 use crate::socket::Socket;
 use crate::Destination;
 
@@ -23,75 +22,25 @@ where
     S: IpParse + Sync + Send,
 {
     promisc: bool,
-    mac_addr: MacAddress,
     arp_resolver: T,
     ip_parser: S,
+    device: EtherDevice,
+}
+
+#[derive(Clone)]
+struct EtherDevice {
+    mac_addr: MacAddress,
     socket: Socket,
 }
 
-impl<T, S> EthernetDriver<T, S>
-where
-    T: ArpResolve<LinkAddress = MacAddress, InternetAddress = IpAddress> + Sync + Send,
-    S: IpParse + Sync + Send,
-{
-    pub fn new(mac_addr: MacAddress, ip_addr: IpAddress, promisc: bool, socket: Socket) -> Self {
-        EthernetDriver {
-            promisc,
-            mac_addr,
-            arp_resolver: T::new(mac_addr.clone(), ip_addr.clone()),
-            ip_parser: S::new(ip_addr.clone()),
-            socket,
-        }
-    }
-
-    pub fn send(&self, data: &[u8]) {
+impl EtherDevice {
+    fn send(&self, data: &[u8]) {
         // TODO check MTU
         unsafe {
             let res = self.socket.send(data);
             if res as usize != data.len() {
                 use crate::utils;
                 utils::show_error_text();
-            }
-        }
-    }
-
-    pub fn recv<'a>(mut self) -> impl Stream<Item = ()> {
-        let (mut sender, receiver) = channel::<Vec<u8>>(N_CHANNEL_BUFFER);
-        let socket = self.socket.clone();
-
-        std::thread::spawn(move || loop {
-            let data = unsafe { socket.recv() };
-
-            sender.try_send(data).expect("The buffer is full");
-        });
-
-        receiver.then(move |data| {
-            let d = MacHeader::mapped(&data[..]);
-            if let Some((h, d)) = d {
-                self.analyze(h, d)
-            } else {
-                future::ready(()).boxed()
-            }
-        })
-    }
-
-    pub fn resolve(
-        &mut self,
-        ip_addr: IpAddress,
-    ) -> Pin<Box<dyn Future<Output = Option<MacAddress>>>> {
-        match self.arp_resolver.resolve(ip_addr) {
-            ResolveResult::Found(value) => future::ready(Some(value)).boxed(),
-            ResolveResult::NotFound {
-                packet_to_send,
-                result,
-            } => {
-                println!("- Asking {:?} by broadcasting.", ip_addr);
-                self.send(&self.constract_ethernet_frame(
-                    BROADCAST_MAC_ADDR,
-                    header::ETHERTYPE_ARP,
-                    &packet_to_send,
-                ));
-                result
             }
         }
     }
@@ -112,6 +61,66 @@ where
 
         result
     }
+}
+
+impl<T, S> EthernetDriver<T, S>
+where
+    T: ArpResolve<LinkAddress = MacAddress, InternetAddress = IpAddress> + Sync + Send,
+    S: IpParse + Sync + Send,
+{
+    pub fn new(mac_addr: MacAddress, ip_addr: IpAddress, promisc: bool, socket: Socket) -> Self {
+        EthernetDriver {
+            promisc,
+            arp_resolver: T::new(mac_addr.clone(), ip_addr.clone()),
+            ip_parser: S::new(ip_addr.clone()),
+            device: EtherDevice { mac_addr, socket },
+        }
+    }
+
+    pub fn send(&self, data: &[u8]) {
+        self.device.send(data);
+    }
+
+    pub fn recv<'a>(mut self) -> impl Stream<Item = ()> {
+        let (mut sender, receiver) = channel::<Vec<u8>>(N_CHANNEL_BUFFER);
+        let socket = self.device.socket.clone();
+
+        std::thread::spawn(move || loop {
+            let data = unsafe { socket.recv() };
+
+            sender.try_send(data).expect("The buffer is full");
+        });
+
+        receiver.then(move |data| {
+            let d = MacHeader::mapped(&data[..]);
+            if let Some((h, d)) = d {
+                self.analyze(h, d)
+            } else {
+                future::ready(()).boxed()
+            }
+        })
+    }
+
+    pub fn resolve(
+        &mut self,
+        ip_addr: IpAddress,
+    ) -> Pin<Box<dyn Future<Output = Option<MacAddress>> + Send>> {
+        match self.arp_resolver.resolve(ip_addr) {
+            ResolveResult::Found(value) => future::ready(Some(value)).boxed(),
+            ResolveResult::NotFound {
+                packet_to_send,
+                result,
+            } => {
+                println!("- Asking {:?} by broadcasting.", ip_addr);
+                self.device.send(&self.device.constract_ethernet_frame(
+                    BROADCAST_MAC_ADDR,
+                    header::ETHERTYPE_ARP,
+                    &packet_to_send,
+                ));
+                result
+            }
+        }
+    }
 
     fn analyze_arp(
         &mut self,
@@ -124,7 +133,11 @@ where
             }
             Ok(ArpReply::Nop) => {}
             Ok(ArpReply::Reply { dst, data }) => {
-                self.send(&self.constract_ethernet_frame(dst, header::ETHERTYPE_ARP, &data));
+                self.device.send(&self.device.constract_ethernet_frame(
+                    dst,
+                    header::ETHERTYPE_ARP,
+                    &data,
+                ));
             }
         }
         future::ready(()).boxed()
@@ -135,27 +148,31 @@ where
         data: &[u8],
         frame_dst: Destination,
     ) -> Pin<Box<dyn Future<Output = ()>>> {
-        println!("Received IPv4 packet",);
-        let packet = {
-            let packet = self.ip_parser.parse(data, frame_dst);
-
-            if let Err(err) = packet {
-                println!(" - {}", err);
-                return future::ready(()).boxed();
+        match self.ip_parser.parse(data, frame_dst) {
+            Err(err) => {
+                println!("- {}", err);
+                future::ready(()).boxed()
             }
-
-            let packet = packet.unwrap();
-
-            if packet.is_none() {
-                return future::ready(()).boxed();
+            Ok(IpReply::Nop) => future::ready(()).boxed(),
+            Ok(IpReply::Reply { dst, data }) => {
+                let sender = self.device.clone();
+                println!("- Resolving IP Address {:?} for ICMP Reply", dst);
+                self.resolve(dst)
+                    .map(move |result| {
+                        if let Some(mac_addr) = result {
+                            println!("- ARP Resolving succeeded for ICMP Reply",);
+                            sender.send(&sender.constract_ethernet_frame(
+                                mac_addr,
+                                header::ETHERTYPE_ARP,
+                                &data,
+                            ));
+                        } else {
+                            println!("- ARP Resolving failed for ICMP Reply",);
+                        }
+                    })
+                    .boxed()
             }
-
-            packet.unwrap()
-        };
-
-        // TODO parse
-
-        future::ready(()).boxed()
+        }
     }
 
     fn unknown_type(&self, ether_type: u16) -> Pin<Box<dyn Future<Output = ()>>> {
@@ -168,7 +185,7 @@ where
         mac_header: &header::MacHeader,
         data: &[u8],
     ) -> Pin<Box<dyn Future<Output = ()>>> {
-        let frame_dst = if mac_header.dst_mac == self.mac_addr {
+        let frame_dst = if mac_header.dst_mac == self.device.mac_addr {
             Destination::ToMyself
         } else if mac_header.dst_mac == BROADCAST_MAC_ADDR {
             Destination::Broadcast

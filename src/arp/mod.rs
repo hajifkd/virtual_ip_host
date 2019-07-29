@@ -33,7 +33,7 @@ pub enum ResolveResult<T> {
     Found(T),
     NotFound {
         packet_to_send: Vec<u8>,
-        result: Pin<Box<dyn Future<Output = Option<T>>>>,
+        result: Pin<Box<dyn Future<Output = Option<T>> + Send>>,
     },
 }
 
@@ -153,7 +153,7 @@ impl ArpResolve for EtherIpResolver {
                 );
 
                 if let Some(sender) = self.requests.remove(&sender_ip) {
-                    println!("- Waiting ARP request found.",);
+                    println!("- Waiting ARP request is found. Resolving Future...",);
                     let _ = sender.send(payload.sender_mac_addr);
                 }
 

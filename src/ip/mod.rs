@@ -5,6 +5,7 @@ use icmp::error::IcmpError;
 use icmp::{IcmpDriver, IcmpReply};
 use map_struct::Mappable;
 use std::fmt;
+use std::mem;
 
 pub mod error;
 pub mod header;
@@ -14,9 +15,9 @@ pub mod icmp;
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct IpAddress(u32);
 
-pub struct IpPacket {
-    pub dst: IpAddress,
-    pub data: Vec<u8>,
+pub enum IpReply {
+    Reply { dst: IpAddress, data: Vec<u8> },
+    Nop,
 }
 
 impl IpAddress {
@@ -55,7 +56,7 @@ impl fmt::Debug for IpAddress {
 pub trait IpParse {
     fn new(my_addr: IpAddress) -> Self;
 
-    fn parse(&mut self, data: &[u8], frame_dst: Destination) -> Result<Option<IpPacket>, IpError>;
+    fn parse(&mut self, data: &[u8], frame_dst: Destination) -> Result<IpReply, IpError>;
 }
 
 pub struct IpDriver {
@@ -64,7 +65,11 @@ pub struct IpDriver {
 }
 
 fn construct_packet(proto: u8, dst: IpAddress, payload: &[u8]) -> Vec<u8> {
-    let result = vec![];
+    let mut result = vec![0; mem::size_of::<IpHeaderWithoutOptions>() + payload.len()];
+    {
+        let (ip_header, payload) = IpHeaderWithoutOptions::mapped_mut(&mut result).unwrap();
+        unimplemented!();
+    }
 
     result
 }
@@ -73,21 +78,20 @@ impl IpDriver {
     fn parse_and_reply_icmp(
         &mut self,
         from: IpAddress,
+        frame_dst: Destination,
         data: &[u8],
-    ) -> Result<IpPacket, IcmpError> {
-        let reply = self.icmp_driver.parse(from, data)?;
+    ) -> Result<IpReply, IcmpError> {
+        let reply = self.icmp_driver.parse(from, frame_dst, data)?;
 
         match reply {
             IcmpReply::Reply { dst, data } => {
-                return Ok(IpPacket {
+                return Ok(IpReply::Reply {
                     dst,
                     data: construct_packet(icmp::ICMP_PROTOCOL_NUMBER, dst, &data[..]),
                 })
             }
-            _ => (),
+            _ => Ok(IpReply::Nop),
         }
-
-        unimplemented!()
     }
 }
 
@@ -99,7 +103,8 @@ impl IpParse for IpDriver {
         }
     }
 
-    fn parse(&mut self, data: &[u8], frame_dst: Destination) -> Result<Option<IpPacket>, IpError> {
+    fn parse(&mut self, data: &[u8], frame_dst: Destination) -> Result<IpReply, IpError> {
+        println!("Received IPv4 packet",);
         let (header, _) = IpHeaderWithoutOptions::mapped(&data).ok_or(IpError::InvalidIpPacket)?;
 
         if header.version() != 4 {
@@ -119,15 +124,10 @@ impl IpParse for IpDriver {
 
         let payload = &data[header_length_in_byte..];
 
-        if frame_dst == Destination::Promisc {
-            return Ok(None);
-        }
-
         match header.protocol {
             icmp::ICMP_PROTOCOL_NUMBER => self
-                .parse_and_reply_icmp(header.src_addr, payload)
-                .map_err(IpError::IcmpError)
-                .map(Some),
+                .parse_and_reply_icmp(IpAddress::from_be(header.src_addr), frame_dst, payload)
+                .map_err(IpError::IcmpError),
             _ => Err(IpError::Unimplemented),
         }
     }

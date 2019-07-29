@@ -26,7 +26,7 @@ impl IpHeaderWithoutOptions {
     }
 
     pub fn version(&self) -> u8 {
-        self.version_ihl >> 2
+        self.version_ihl >> 4
     }
 
     pub fn ihl(&self) -> u8 {
