@@ -1,55 +1,24 @@
 use libc::{
-    bind, c_int, ioctl, open, packet_mreq, recv, sendto, setsockopt, sockaddr_ll, socket, write,
-    AF_PACKET, ETH_ALEN, ETH_P_ALL, IFF_TAP, O_RDWR, PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC,
-    PF_PACKET, SOCK_RAW, SOL_PACKET,
+    bind, c_int, ioctl, packet_mreq, recv, sendto, setsockopt, sockaddr_ll, socket, write,
+    AF_PACKET, ETH_ALEN, ETH_P_ALL, PACKET_ADD_MEMBERSHIP, PACKET_MR_PROMISC, PF_PACKET, SOCK_RAW,
+    SOL_PACKET,
 };
-
-use std::ffi::CStr;
 
 mod ifreq;
 
 /// ./x86_64-linux-gnu/bits/ioctls.h:#define SIOCGIFINDEX	0x8933		/* name -> if_index mapping	*/
 const SIOCGIFINDEX: usize = 0x8933;
 
-const TUNSETIFF: usize = 0x400454ca;
-const TAP_NAME: &'static [u8; 4] = b"tap0";
-
 #[derive(Debug, Clone)]
 pub struct Socket {
     pub fd: c_int,
-    pub tap_fd: c_int,
     pub ifindex: i32,
-}
-
-unsafe fn open_tap() -> Option<c_int> {
-    let mut if_req: ifreq::ifreq = std::mem::uninitialized();
-    let fd = open(
-        CStr::from_bytes_with_nul_unchecked(b"/dev/net/tun\0").as_ptr() as _,
-        O_RDWR,
-    );
-    if fd < 0 {
-        return None;
-    }
-
-    if_req.param.ifr_flags = IFF_TAP as _;
-    for i in 0..TAP_NAME.len() {
-        if_req.ifr_name[i] = TAP_NAME[i] as _;
-    }
-
-    let err = ioctl(fd, TUNSETIFF as _, &mut if_req as *mut _);
-
-    if err < 0 {
-        None
-    } else {
-        Some(fd)
-    }
 }
 
 impl Socket {
     pub unsafe fn open_raw_socket() -> Socket {
         Socket {
             fd: socket(PF_PACKET, SOCK_RAW, u16::from_be(ETH_P_ALL as _) as _),
-            tap_fd: open_tap().expect("Open TAP Failed"),
             ifindex: -1,
         }
     }
@@ -135,8 +104,6 @@ impl Socket {
         for i in 0..ETH_ALEN as _ {
             sa.sll_addr[i] = 0xFF;
         }
-
-        write(self.tap_fd, buf.as_ptr() as _, buf.len());
 
         sendto(
             self.fd,
