@@ -25,12 +25,12 @@ fn main() {
 
         let mut driver = EthernetDriver::<EtherIpResolver, IpDriver>::new(
             MacAddress::new([0x02, 0x00, 0x00, 0xEF, 0x24, 0xA8]),
-            IpAddress::new_be_bytes([192, 168, 1, 111]),
+            IpAddress::new_be_bytes([192, 168, 56, 150]),
             false,
             s,
         );
         let arp_test = driver
-            .resolve(IpAddress::new_be_bytes([192, 168, 1, 15]))
+            .resolve(IpAddress::new_be_bytes([192, 168, 56, 1]))
             .map(|d| println!("- ARP Resolving Result: {:?}", d));
         let recv = driver.recv();
         let _ = block_on(future::join(arp_test, recv.for_each(|_| future::ready(()))).map(|_| ()));
